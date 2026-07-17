@@ -1,0 +1,27 @@
+Night 1 Results
+Public Notifications:
+__________________
+1. Brooke
+2. Caedmon
+3. Eric
+4. Ella
+5. Finn
+6. Jack
+7. Jayden
+8. James
+Your target visited Jonah!
+9. Jonathan
+10. Luke
+11. Drew
+12. Jonah
+You were tracked! They saw you visit James.
+13. Piran
+14. Robert
+15. Sam
+Your target wasn't visited by anyone!
+Your target visited James!
+16. Jenkins
+__________________
+Indeterminancies:
+Random Tracker results for James tracking Eric, Jonah chosen from list of all visits tonight.
+Random Tracker results for Sam tracking Jonah, James chosen. (Options: James, Jayden)

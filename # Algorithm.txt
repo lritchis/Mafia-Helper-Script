@@ -1,0 +1,12 @@
+# Algorithm:
+# Determine the list of all transport nodes (set of players in a transport chain)
+# Concurrently for each node, resolve the transports and check if any transported are cancelled as a result.
+# If so, mark the node that the transporter is acting on to be evaluated. 
+# Check for blocked transporters that are not part of any transports concurrently with the node resolutions. 
+# Concurrently evaluate the set of nodes that of nodes that are marked for evaluation. 
+# If a transporter is blocked as a result, again mark that node for re-evaluation. 
+# Continue repeating this process until no nodes are marked for re-evaluation. 
+# Transporters that have their action cancelled but ultimately end up in a non-blocked/controlled
+# location should be notified that they were, "Transported into a block/control!"
+# A Transporter that ultimately ends up in a blocked/location is notified that they are blocked/controlled
+# as normal. 
