@@ -374,12 +374,12 @@ faction_dict = { # might add more to this, primarily just Town/non-Town distingu
 
 # *** all the support code for reading/writing that is done in the other files should be placed as a f'n in this file instead
 class game:
-    def __init__(self, data_file, action_file = None, vote = None):
+    def __init__(self, data_file, action_file = None, vote_target = None):
         if action_file is None: # init case (no action file)
              self.parseInitFile(data_file)
         
         else: # night evaluation case
-            self.parseGameTree(data_file,vote)
+            self.parseGameTree(data_file,vote_target)
             self.parseActionFile(action_file)
             # *** evaluate actions f'n
             self.evaluateActions()
@@ -429,7 +429,7 @@ class game:
             else:
                 sys.exit("Error, no valid role category detected in: " + current_line) 
     
-    def parseGameTree(self, status_file,vote=None):
+    def parseGameTree(self, status_file,vote_target = None):
         gameTree = ET.parse(status_file)
         gameRoot = gameTree.getroot()
         self.filename = gameRoot.tag
@@ -452,7 +452,7 @@ class game:
             player_name = category.find('Player').text
             perpetuated_element = category.find('Perpetuated')
 
-            if(vote == player_name): # vote input will kill whomever was voted that day ***haven't tested btw
+            if(vote_target == player_name): # vote input will kill whomever was voted that day ***haven't tested btw
                 perpetuated_element.find("living_status").text = "0"
                 # *** Godfather promotion needs to be able to occur here
 
@@ -605,6 +605,7 @@ class game:
                             action_obj.player.perpetuated["living_status"] = 0 # *** needs to be made an attack and resolved accordingly
                             action_obj.player.notifications.append("You were killed by an alerting Veteran!\nWill?\n")
                             action_obj.cancelled = 1
+                            self.players[action_obj.targets[i]].visitors.append(action_obj.player)
 
         while(self.action_queue): 
             action_obj = self.action_queue[0]
