@@ -631,13 +631,21 @@ class game:
                         #print(self.players[target_inds[0]].player_name)
                         #print(self.players[target_inds[0]].role.visitors)
                     case 'transporting':
-                        transporting = self.findResolutionObj(action_obj, target_inds, transporting)
+                        # *** Wording needs checked, also untested
+                        if self.players[target_inds[0]].jailed == 1:
+                            action_obj.player.notifications.append("Your transport failed!")
+                            self.players[target_inds[0]].notifications.append("Someone tried to transport you, but you were in jail!")
+                        elif self.players[target_inds[1]].jailed == 1:
+                            action_obj.player.notifications.append("Your transport failed!")
+                            self.players[target_inds[1]].notifications.append("Someone tried to transport you, but you were in jail!")
+                        else:
+                            transporting = self.findResolutionObj(action_obj, target_inds, transporting)
                         #self.players[target_inds[0]].transported.append(self.players[target_inds[1]])
                         #self.players[target_inds[1]].transported.append(self.players[target_inds[0]])
                     case 'resolve_transporting':
                         cancel_list = []
                         for remaining_action in self.action_queue:
-                            if(type(remaining_action.priority) is int):
+                            if(remaining_action.cancelled == 0):
                                 if (remaining_action.action == "blocking") | (remaining_action.action == "controlling"):
                                     cancel_list.append(remaining_action)
                                 elif (remaining_action.priority > action_dict["blocking"]["priority"]):
