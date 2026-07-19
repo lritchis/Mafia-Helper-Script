@@ -876,12 +876,11 @@ class game:
         return resolution_exists # should always be 1, but better not to hard code it I suppose
 
     def resolveBlock(self, target):
-        # *** yea I think this doesn't work (because popping and for loops)
         target.notifications.append("You were roleblocked!")
 
         for queue_ind, remaining_action in enumerate(self.action_queue):
             if remaining_action.player is target:
-                self.action_queue.pop(queue_ind)
+                remaining_action.cancelled = 1
 
     def resolveBlackmails(self, action_obj):
         new_blackmails = []
@@ -1022,176 +1021,146 @@ class game:
         return self.players[target_ind] 
     
     # Helper Functions for Role Actions
-    def resolveTransports(self, cancel_list, resolve_obj): # *** block and control logic needs to be implemented
+    def resolveTransports(self, cancel_list, resolve_obj):
         num_players = len(self.players)
+
+        # eval_obj has attributes:
+        # -transports_list: list of len num_players. At the index corresponding to their player_num, this list will be None if 
+        #       the players is not transporting and will be a sub-list of the player's transport action objects if they are. 
+        # -cancel_list: list of len num_players. At the index corresponding to player_num, this list will be None if no cancellation
+        #       objects are targetted at the player and will be a sub-list of the corresponding cancellation action objects if they are.
+        # -affected_locations: list of len num_players. At the index corresponding to their player_num, will be 0 if they are not being
+        #       transported, and 0 if they are. 
+        # -nodes_to_eval: initialized to empty list. Used to hold eval status (0: eval not needed, 1: eval needed, 2: remove node) of
+        #       the transport node sets constructed by buildTransportNodes.
+        # -nxt_nodes_to_eval: initialized to empty list. Used to hold eval status (0: eval not needed, 1: eval needed, 2: remove node) of
+        #       the transport node sets constructed by buildTransportNodes. Kept separately so that for loop can iterate through 
+        #       nodes_to_eval without affecting the status the nodes should have as of the last pass. 
         eval_obj = transportEvalList(cancel_list, resolve_obj, num_players)
-        # transportEvalList class creates lists with blocks_and_controls in the index location of their target and 
-        # transport objects in the location index of the transporter  
-
-        for i in range(num_players): 
-            # check for transporters that have a cancellation on their location and are not being transported. Cancel their actions first. 
-            if (eval_obj.cancel_list[i]) and (eval_obj.transporters_list[i]) and (not eval_obj.affected_locations[i]): #  # eval_obj.transporters_list[eval_obj.locations[i]]
-                #if not(eval_obj.affected_locations[i]):
-                #transp_player_num = eval_obj.locations[i]
-                #transp_player_obj = self.players[transp_player_num]
-                transp_action_obj = eval_obj.transporters_list[eval_obj.locations[i]]
-                # Notifications
-                if(eval_obj.cancel_list[i].action == "blocking"): # *** we need to go and remove all the block/control objects from action_queue. ugh
-                    transp_action_obj.player.notifications.append("You were roleblocked!")
-                elif(eval_obj.cancel_list[i].action == "controlling"):
-                    transp_action_obj.player.notifications.append("You were controlled by a Witch!")
-
-                # remove this cancellation object from cancellations list
-                eval_obj.cancel_list[i] = None
-
-                # remove transporter from visits list of the targets
-                for visit in eval_obj.transporters_list[eval_obj.locations[i]].targets:
-                    self.players[visit].visitors.remove(transp_action_obj.player)
-                    
-                # remove the other target from the transported list of the target
-                #self.players[transp_action_obj.targets[0]].transported.remove(self.players[transp_action_obj.targets[1]])
-                #self.players[transp_action_obj.targets[1]].transported.remove(self.players[transp_action_obj.targets[0]])
-
-                # remove this transporter from the transporters list
-                eval_obj.transporters_list[eval_obj.locations[i]] = None
-                #eval_obj.transporters_list[i] = None
   
-        # *** notification logic needs to be implemented
-        #node_list = []
-        transport_nodes = self.buildTransportNodes(eval_obj.transporters_list) 
-        locations_wc = self.player_locations.copy()
-        nodes_to_eval = [1] * len(transport_nodes)
-        nxt_nodes_to_eval = [0] * len(transport_nodes)
-        while any(node_status == 1 for node_status in nodes_to_eval):
-            for node_ind, node_status in enumerate(nodes_to_eval):
-                if node_status == 1:
-                    nxt_nodes_to_eval[node_ind] = 0
+        node_list = self.buildTransportNodes(eval_obj.transports_list) 
+        eval_obj.nodes_to_eval = [1] * len(node_list)
+        eval_obj.nxt_nodes_to_eval = [0] * len(node_list)
 
-                    node_set = transport_nodes[node_ind]["transports"]
+        # check for transporters that have a cancellation on their location and are not being transported. Cancel their actions first. 
+        for i in range(num_players): 
+            if (eval_obj.cancel_list[i]) and (eval_obj.transports_list[i]) and (not eval_obj.affected_locations[i]):
+                self.cancelTransport(eval_obj, node_list, i)
+
+        while any(node_status == 1 for node_status in eval_obj.nodes_to_eval):
+            for node_ind, node_status in enumerate(eval_obj.nodes_to_eval):
+                if node_status == 1:
+                    eval_obj.nxt_nodes_to_eval[node_ind] = 0
+
+                    node_set = node_list[node_ind]["targets"]
                     for location in node_set:
-                        locations_wc[location] = self.player_locations[location]
+                        self.player_locations[location] = self.players[location].player_num
                     
                     swap_node_list = [swap_node for swap_node in node_set if (node_set[swap_node] == 1)]       
                     r.shuffle(swap_node_list)
                     num_swaps = len(swap_node_list)
                     
                     for ind in range(num_swaps - 1):
-                        locations_wc[swap_node_list[ind]] = swap_node_list[ind + 1]
-                    locations_wc[swap_node_list[num_swaps - 1]] = swap_node_list[0]
-   
-                    for transported_player_num in node_set:
-                        if eval_obj.transporters_list[transported_player_num] and eval_obj.cancel_list[locations_wc.index(transported_player_num)]:
-                            for set_eval_ind, eval_node in enumerate(transport_nodes):
-                                #print(self.players[transported_player_num])
-                                if(self.players[transported_player_num] in eval_node["transporters"]):
-                                    #print(self.players[transported_player_num])
-                                    #print(node_ind)
-                                    #print(set_eval_ind)
-                                    nxt_nodes_to_eval[set_eval_ind] = 1
-                                    self.players[transported_player_num].blocked = 1 # *** might use if to set block or control idc rn 
-                                    eval_node["cancellations"].append(eval_obj.transporters_list[transported_player_num])
-                    #print(node_set)
-                    #print(nxt_nodes_to_eval[node_ind])
-            print("1")
-            print(transport_nodes)
-            for node_ind, node_status in enumerate(nodes_to_eval):
-                # modify node for any changes, see if it needs split
-                # isolate transporters in this node, re-build nodes and see if a split occured
-                for cancelled_node in transport_nodes[node_ind]["cancellations"]:
-                    print(node_ind)
-                    t0 = cancelled_node.targets[0]
-                    t1 = cancelled_node.targets[1]
-                    # A transporter whose targets both are only transported once means the node is removed
-                    if transport_nodes[node_ind]["transports"][t0] == 1 & transport_nodes[node_ind]["transports"][t1] == 1: 
-                        locations_wc[t0] = self.player_locations[t0]
-                        locations_wc[t1] = self.player_locations[t1]
-                        nxt_nodes_to_eval[node_ind] = 2 # use 2 to say that the node needs to be removed
-                        # *** When a node dissolves, we need to check if any transporters were in that node and mark the respective nodes if they're blocked
-                        # *** this is not done, need to actually remove the transport from the node it's in
-                        for target in transport_nodes[node_ind]["transports"]:
-                            if eval_obj.transporters_list[target] and eval_obj.cancel_list[target]:
-                                for node_ind2, node_set in enumerate(transport_nodes): 
-                                    if eval_obj.transporters_list[target].player in node_set["transporters"]:
-                                        #print(node_ind2)
-                                        # *** can I make this all way cleaner by linking player objects to action objects?
-                                        nxt_nodes_to_eval[node_ind2] = 1
-                                        eval_obj.transporters_list[target].player.blocked = 1
-                                        print(eval_obj.transporters_list[target].player.player_name)
-                                        transport_nodes[node_ind2]["transports"][eval_obj.transporters_list[target].targets[0]] -= 1
-                                        if transport_nodes[node_ind2]["transports"][eval_obj.transporters_list[target].targets[0]] == 0:
-                                            transport_nodes[node_ind2]["transports"].pop(eval_obj.transporters_list[target].targets[0], None)
-                                            locations_wc[eval_obj.transporters_list[target].targets[0]] = self.player_locations[eval_obj.transporters_list[target].targets[0]]
+                        self.player_locations[swap_node_list[ind]] = swap_node_list[ind + 1]
+                    self.player_locations[swap_node_list[num_swaps - 1]] = swap_node_list[0]
 
-                                        transport_nodes[node_ind2]["transports"][eval_obj.transporters_list[target].targets[1]] -= 1
-                                        if transport_nodes[node_ind2]["transports"][eval_obj.transporters_list[target].targets[1]] == 0:
-                                            transport_nodes[node_ind2]["transports"].pop(eval_obj.transporters_list[target].targets[1], None)
-                                            locations_wc[eval_obj.transporters_list[target].targets[1]] = self.player_locations[eval_obj.transporters_list[target].targets[1]]
-                                        #print(transport_nodes[node_ind2]["transporters"])
-                                        #print(eval_obj.transporters_list[target].player)
-                                        transport_nodes[node_ind2]["transporters"].remove(eval_obj.transporters_list[target].player)
-                    # if only one target is transported exclusively by the cancelled transporter, just remove that target 
-                    # and the transporter
-                    elif transport_nodes[node_ind]["transports"][t0] == 1:
-                        #print("1.5")
-                        #print(transport_nodes[node_ind])
-                        locations_wc[t0.player_num] = self.player_locations[t0]
-                        transport_nodes[node_ind]["transports"].pop(t0, None)
-                        transport_nodes[node_ind]["transports"][t1] -= 1
-                        transport_nodes[node_ind]["transporters"].remove(cancelled_node)
-                    elif transport_nodes[node_ind]["transports"][t1] == 1:
-                        
-                        locations_wc[t1.player_num] = self.player_locations[t1]
-                        transport_nodes[node_ind]["transports"].pop(t1, None)
-                        transport_nodes[node_ind]["transports"][t0] -= 1
-                        transport_nodes[node_ind]["transporters"].remove(cancelled_node)
+                    transported_player_nums = list(node_set.keys())
+                    for player_num in transported_player_nums:
+                        if eval_obj.transports_list[player_num] and eval_obj.cancel_list[self.player_locations.index(player_num)]:
+                            self.cancelTransport(eval_obj, node_list, player_num)
 
-                    # if both targets are transported by multiple transporters, a split may need to occur
-                    elif transport_nodes[node_ind]["transports"][t0] > 1 & transport_nodes[node_ind]["transports"][t0] > 1: 
-                        transport_nodes[node_ind]["transports"][t0] -= 1
-                        transport_nodes[node_ind]["transports"][t1] -= 1
-                        transport_nodes[node_ind]["transporters"].pop(cancelled_node, None)
-                        transp_inds = [transporter for transporter in transport_nodes[node_ind]["transporters"]]
-                        new_nodes = self.buildTransportNodes([eval_obj.transporters_list[i] for i in transp_inds])
-                        if (new_nodes[0] != transport_nodes[node_ind]):
-                            transport_nodes[node_ind] = new_nodes[0]
-                            transport_nodes.append(new_nodes[1])
-                            nxt_nodes_to_eval.append(1)
-                    else: # this case shouldn't happen but is included to catch errors
-                        sys.exit("Error in transporter node removal")
+            num_nodes = len(eval_obj.nxt_nodes_to_eval)
+            node_list = [node_list[i] for i in range(num_nodes) if eval_obj.nxt_nodes_to_eval[i] != 2]
+            eval_obj.nodes_to_eval = [eval_obj.nxt_nodes_to_eval[i] for i in range(num_nodes) if eval_obj.nxt_nodes_to_eval[i] != 2]
+            eval_obj.nxt_nodes_to_eval[:] = [0] * len(eval_obj.nodes_to_eval)
 
-            num_nodes = len(nxt_nodes_to_eval)
-            transport_nodes = [transport_nodes[i] for i in range(num_nodes) if nxt_nodes_to_eval[i] != 2]
-            nodes_to_eval = [nxt_nodes_to_eval[i] for i in range(num_nodes) if nxt_nodes_to_eval[i] != 2]
-            nxt_nodes_to_eval[:] = [0] * len(nodes_to_eval)
-            print("2")
-            print(transport_nodes)
-        self.player_locations = locations_wc.copy()
-        print(self.player_locations)
         for i in range(num_players):
-            if(self.players[self.player_locations[i]].blocked == 1 and not eval_obj.cancel_list[i]):
-                self.players[self.player_locations[i]].notifications.append("You were transported into a block!")
+            if self.players[self.player_locations[i]].blocked > 0 or self.players[self.player_locations[i]].controlled > 0:  
+                blocks_on_location = 0
+                controls_on_location = 0
+                if eval_obj.cancel_list[i]:
+                    for cancellation in eval_obj.cancel_list[i]:
+                        if cancellation.action == "blocking":
+                            blocks_on_location += 1
+                        elif cancellation.action == "controlling":
+                            controls_on_location += 1
+                
+                num_diff = self.players[self.player_locations[i]].blocked - blocks_on_location
+                for noti_num in range(num_diff):
+                    self.players[self.player_locations[i]].notifications.append("You were transported into a block!")
+                
+                num_diff = self.players[self.player_locations[i]].controlled - controls_on_location
+                for noti_num in range(num_diff):
+                    self.players[self.player_locations[i]].notifications.append("You were transported into a control!")
 
     def buildTransportNodes(self, transporters_list):
-        transport_nodes = []
-        for transport in transporters_list:
-            if(transport): # index is None if no transport is occuring
-                t0 = transport.targets[0]
-                t1 = transport.targets[1]
-                transporter = transport.player
-                #if (transport_nodes):
-                in_node = 0
-                for node in transport_nodes:
-                    if (t0 in node["transports"]) | (t1 in node["transports"]):
-                        node["transports"][t0] = node["transports"].get(t0, 0) + 1
-                        node["transports"][t1] = node["transports"].get(t1, 0) + 1
-                        node["transporters"].append(transporter)
-                        in_node = 1
-                        break
-                if in_node == 0:
-                    transport_nodes.append({"transports" : {t0: 1, t1: 1}, "transporters" : [transporter], "cancellations" : []})
-                #else:
+        node_list = []
+        for player in transporters_list:
+            if(player): # index is None if no transport is occuring
+                for transport in player:
+                    if(transport): 
+                        t0 = transport.targets[0]
+                        t1 = transport.targets[1]
+                        in_node = 0
+                        for node in node_list:
+                            if (t0 in node["targets"]) | (t1 in node["targets"]):
+                                node["targets"][t0] = node["targets"].get(t0, 0) + 1
+                                node["targets"][t1] = node["targets"].get(t1, 0) + 1
+                                node["transports"].append(transport)
+                                transport.node = node
+                                in_node = 1
+                                break
+                        if in_node == 0:
+                            node_list.append({"targets" : {t0: 1, t1: 1}, "transports" : [transport]})
+                            transport.node = node_list[-1]
                     
-        return transport_nodes        
+        return node_list        
+    
+    def cancelTransport(self, eval_obj, node_list, transported_player_num):
+        for transport in eval_obj.transports_list[transported_player_num]:
+            transport.cancelled = 1
+
+        for cancellation in eval_obj.cancel_list[transported_player_num]:
+            if cancellation.action == "blocking":
+                self.players[transported_player_num].blocked += 1 
+            elif cancellation.action == "controlling":
+                self.players[transported_player_num].controlled += 1 
+
+        for transport_obj in eval_obj.transports_list[transported_player_num]:
+            node_list_ind = node_list.index(transport_obj.node)
+            eval_obj.nxt_nodes_to_eval[node_list_ind] = 1
+            
+            now_static_targets = 0
+
+            for target_ind, target in enumerate(transport_obj.targets):
+                self.players[target].visitors.remove(self.players[transported_player_num])
+
+                node_list[node_list_ind]["targets"][target] -= 1
+                if node_list[node_list_ind]["targets"][target] < 1:
+                    now_static_targets += 1
+                    self.player_locations[target] = self.players[target].player_num
+                    node_list[node_list_ind]["targets"].pop(target, None)
+                    if eval_obj.transports_list[target] and eval_obj.cancel_list[target]:
+                        self.cancelTransport(eval_obj, node_list, target) # recursive cancellations
+
+            node_list[node_list_ind]["transports"].remove(transport_obj)
+
+            if(now_static_targets == 2): # both targets had only one transporter transporting them
+                eval_obj.nxt_nodes_to_eval[node_list_ind] = 2
+
+            elif(now_static_targets == 0): # need to check for node split
+                transp_inds = [transport for transport in node_list[node_list_ind]["transports"]]
+                new_nodes = self.buildTransportNodes([eval_obj.transporters_list[i] for i in transp_inds])
+                if (new_nodes[0] != node_list[node_list_ind]):
+                    node_list[node_list_ind] = new_nodes[0]
+                    node_list.append(new_nodes[1])
+                    eval_obj.nxt_nodes_to_eval.append(1)
+
+                    node_list_len = len(node_list)
+                    for transport in node_list[node_list_len - 1]["transports"]:
+                        transport.node = node_list[node_list_len - 1]
+
+        eval_obj.transports_list[transported_player_num] = None
 
     def determineAppearances(self): # *** I should generalize this function so I can use it for transports and disguises
         # *** this needs to determine if any pre-existing chains have been impacted
@@ -1287,18 +1256,27 @@ class actionObject:
 class transportEvalList:
     def __init__(self, cancel_list, resolution_obj, num_players):
         self.cancel_list = [None] * num_players
-        self.transporters_list = [None] * num_players
-        self.cancellation_notice_list = [None] * num_players
+        self.transports_list = [None] * num_players
+
         for cancellation in cancel_list:
-           self.cancel_list[cancellation.targets[0]] = cancellation # target is in a list     
+            if self.cancel_list[cancellation.targets[0]]:
+               self.cancel_list[cancellation.targets[0]].append(cancellation)
+            else:
+                self.cancel_list[cancellation.targets[0]] = [cancellation] # target is in a list     
 
         self.affected_locations = [0] * num_players
         for transport in resolution_obj.player:
-            self.transporters_list[transport.player.player_num] = transport # *** Currently this does not support Necro using multiple transports on the same night
+            if self.transports_list[transport.player.player_num]:
+                self.transports_list[transport.player.player_num].append(transport)
+            else:
+                self.transports_list[transport.player.player_num] = [transport]
+            
             for target in transport.targets: 
                 self.affected_locations[target] = 1
-            
-        self.locations = [i for i in range(num_players)]
+
+        self.nodes_to_eval = []
+
+        self.nxt_nodes_to_eval = []
 
     #def swapLocations(self, )
         
@@ -1315,7 +1293,7 @@ class player:
         # non-perpetuated class variables for evaluating night actions
         self.actions = []
         self.attackers = []
-        self.blocked = 0
+        self.blocked = 0 
         self.controlled = 0
         self.immunities = []
         self.jailed = 0
