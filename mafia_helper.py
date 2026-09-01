@@ -23,149 +23,188 @@ roles_regex = jailor_regex + r"|" + RT_regex + r"|" + mafia_regex + r"|" + NK_re
 # if an action keyword gets changed, it needs to be changed here and in the role(s) that utilizes it
 action_dict = {
     "wiretapping" : {"priority" : 0,
-                     "is_visit" : 0
+                     "is_visit" : 0,
+                     "targeted" : 1
     },
     "seancing" : {"priority" : 0,
                      "is_visit" : 0,
+                     "targeted" : 1
     },
     "activating" : {"priority" : 0, # *** I think this is more specific
                      "is_visit" : 0
     }, # this is listed alongside saves in the info doc, but it is treated as a transcendent/0 priority action
     "igniting" : {"priority" : 0,
-                     "is_visit" : 0
+                     "is_visit" : 0,
+                     "targeted" : 1
     },
     "haunting" : {"priority" : 0,
                      "is_visit" : 0,
-                     "max_targets" : 1
+                     "max_targets" : 1,
+                     "targeted" : 0
     },
     # ***Exe target switching
     "jailing" : {"priority" : 1,
                      "is_visit" : 1,
-                     "max_targets" : 1
+                     "max_targets" : 1,
+                     "targeted" : 1
     },
     "alerting" : {"priority" : 2,
-                     "is_visit" : 0
+                     "is_visit" : 0,
+                     "targeted" : 0
     },
     "transporting" : {"priority" : 3,
                      "is_visit" : 1,
-                     "max_targets" : 2
+                     "max_targets" : 2,
+                     "targeted" : 1
     },
     "resolve_transporting" : {"priority" : 3.5,
-                     "is_visit" : 0
+                     "is_visit" : 0,
+                     "targeted" : 0
     },
     "trapping" : {"priority" : 4,
-                     "is_visit" : 1
+                     "is_visit" : 1,
+                     "targeted" : 1
     },
     "hallowing" : {"priority" : 5,
                      "is_visit" : 1,
-                     "max_targets" : 1
+                     "max_targets" : 1,
+                     "targeted" : 1
     },
     "controlling" : {"priority" : 6,
                      "is_visit" : 1,
-                     "max_targets" : 1
+                     "max_targets" : 1,
+                     "targeted" : 1
     },
     "blocking" : {"priority" : 7,
                      "is_visit" : 1,
-                     "max_targets" : 1
+                     "max_targets" : 1,
+                     "targeted" : 1
     },
     "remembering" : {"priority" : 8,
-                     "is_visit" : 0
+                     "is_visit" : 0,
+                     "targeted" : 0
     },
     "disguising" : {"priority" : 9,
                      "is_visit" : 1,
-                     "max_targets" : 2
+                     "max_targets" : 2,
+                     "targeted" : 1
     },
-    "determineAppearances" : {"priority" : 9.5,
-                     "is_visit" : 0
+    "resolve_disguising" : {"priority" : 9.5,
+                     "is_visit" : 0,
+                     "targeted" : 0
     },
     "protecting" : {"priority" : 10,
                      "is_visit" : 1,
-                     "max_targets" : 1
+                     "max_targets" : 1,
+                     "targeted" : 1
     },
     "saving" : {"priority" : 11,
                      "is_visit" : 1,
-                     "max_targets" : 1
+                     "max_targets" : 1,
+                     "targeted" : 1
     },
     "self-saving" : {"priority" : 12,
-                     "is_visit" : 0 
+                     "is_visit" : 0,
+                     "targeted" : 0 
     },
     "drinking potion" : {"priority" : 12,
-                     "is_visit" : 0
+                     "is_visit" : 0,
+                     "targeted" : 0
     },
     "delivering to" : {"priority" : 13,
-                     "is_visit" : 1
+                     "is_visit" : 1,
+                     "targeted" : 1
     },
     "blessing" : {"priority" : 14,
-                     "is_visit" : 0
+                     "is_visit" : 0,
+                     "targeted" : 0
     },
     "vesting" :{"priority" : 15,
-                     "is_visit" : 0 
+                     "is_visit" : 0,
+                     "targeted" : 0 
     },
     "dousing" : {"priority" : 16,
-                     "is_visit" : 1
+                     "is_visit" : 1,
+                     "targeted" : 1
     },
     "blackmailing" : {"priority" : 17,
                      "is_visit" : 1,
-                     "max_targets" : 1
+                     "max_targets" : 1,
+                     "targeted" : 1
     },
     'resolveBlackmails' : {"priority" : 17.5,
-                     "is_visit" : 0
+                     "is_visit" : 0,
+                     "targeted" : 1
     },
     "investigating" : {"priority" : 18,
                      "is_visit" : 1,
-                     "max_targets" : 1
+                     "max_targets" : 1,
+                     "targeted" : 1
     },
     "checking" : {"priority" : 19,
                      "is_visit" : 0,
-                     "max_targets" : 1
+                     "max_targets" : 1,
+                     "targeted" : 0
     },
     "lifebinding" : 20,
     "killing" : {"priority" : 21,
                      "is_visit" : 1,
-                     "max_targets" : 1
+                     "max_targets" : 1,
+                     "targeted" : 1
     }, 
     # leaving 22 for Mafioso killing, set in ***
     "cleaning" : {"priority" : 23,
                      "is_visit" : 1,
-                     "max_targets" : 1
+                     "max_targets" : 1,
+                     "targeted" : 1
     },
     "stabbing" : {"priority" : 24,
                      "is_visit" : 1,
-                     "max_targets" : 1
+                     "max_targets" : 1,
+                     "targeted" : 1
     },
     "mauling" : {"priority" : 25,
                      "is_visit" : 1,
-                     "max_targets" : 1
+                     "max_targets" : 1,
+                     "targeted" : 1
     },
     "shooting" : {"priority" : 26,
                      "is_visit" : 1,
-                     "max_targets" : 1
+                     "max_targets" : 1,
+                     "targeted" : 1
     },
     "executing" : {"priority" : 27,
-                     "is_visit" : 0 
+                     "is_visit" : 0,
+                     "targeted" : 0
     },
     "hexing" : {"priority" : 28,
                      "is_visit" : 0, # ***
-                     "max_targets" : 1 
+                     "max_targets" : 1,
+                     "targeted" : 1
     },
     "tracking" : {"priority" : 29,
                      "is_visit" : 1,
-                     "max_targets" : 1
+                     "max_targets" : 1,
+                     "targeted" : 1
     },
     "watching" : {"priority" : 30,
                      "is_visit" : 1,
-                     "max_targets" : 1
+                     "max_targets" : 1,
+                     "targeted" : 1
     },
     "stalking" : {"priority" : 31,
                      "is_visit" : 1,
-                      "max_targets" : 1
+                      "max_targets" : 1,
+                     "targeted" : 1
     },
     "determineVisits" : {"priority" : 31.5,
-                     "is_visit" : 0
+                     "is_visit" : 0,
+                     "targeted" : 0
     },
     "reviving" : {"priority" : 33,
                      "is_visit" : 0,
-                     "max_targets" : 1
+                     "max_targets" : 1,
+                     "targeted" : 1
     },
     "attackEval" : 50
 }
@@ -309,7 +348,7 @@ role_class_dict = {
     "Disguiser" : {"actions" : ["disguising"],
                 "faction" : "Mafia",
                 "perpetuated" : {"item" : ["active_disguise"], 
-                                 "default": []}
+                                 "default": [[-1, -1]]}
     },
 
     "Janitor" : {"actions" : [],
@@ -357,7 +396,9 @@ role_class_dict = {
     },
 
     "Executioner" : {"actions" : [],
-                "faction" : "non-Town"
+                "faction" : "non-Town",
+                "perpetuated" : {"item" : ["switch", "target"], 
+                                 "default": [1, None]}
     },
 
     "Jester" : {"actions" : [],
@@ -391,7 +432,6 @@ class game:
         self.filename = re.sub(r"\s","_",self.filename,)
         self.players = []
         self.categories = []
-
         player_num = 0
         while (True):
             current_line = file.readline() ## read next line in setup file
@@ -421,6 +461,11 @@ class game:
                 current_line = re.sub(r'\A\s',"",current_line)
                 # remove newline character and assign to player_name
                 player_name = re.sub(r'\n',"",current_line)
+
+                # ***
+                #if role_name == "Executioner":
+                #    target_name = re.match(r'\(target\s([A-Za-z]+)\)',player_name).group()[0] # ***
+                #    player_name = re.sub(r'\(target\s([A-Za-z]+)\)',"",player_name)
 
                 self.players.append(player(player_name, player_num, role_name))
                 player_num = player_num + 1
@@ -543,20 +588,20 @@ class game:
                         num_commas = len(re.findall(",",targetting_text))
                         if (num_commas > 0): # 3 or more targets
                             for target_num in range(num_commas + 1):
-                                targets.append(re.search(r"\A[a-zA-Z]+",targetting_text).group())
+                                targets.append(re.search(r"\A[a-zA-Z0-9]+",targetting_text).group())
                                 if(target_num <= num_commas):
-                                    targetting_text = re.sub(r"\A[a-zA-Z]+,\s","",targetting_text)
+                                    targetting_text = re.sub(r"\A[a-zA-Z0-9]+,\s","",targetting_text)
                         elif (re.search(r"\sand\s", targetting_text)): # two targets
-                            targets.append(re.search(r"\A[a-zA-Z]+",targetting_text).group())
-                            targetting_text = re.sub(r"\A[a-zA-Z]+\sand\s","",targetting_text)
-                            targets.append(re.search(r"\A[a-zA-Z]+",targetting_text).group())
+                            targets.append(re.search(r"\A[a-zA-Z0-9]+",targetting_text).group())
+                            targetting_text = re.sub(r"\A[a-zA-Z0-9]+\sand\s","",targetting_text)
+                            targets.append(re.search(r"\A[a-zA-Z0-9]+",targetting_text).group())
                         else: # single target
                             targets.append(targetting_text)
                         # *** I think I need a "no targets" case here, also Scientist
                         if(len(targets) > player.max_targets[option_num]):
                             sys.exit("Too many targets selected for " + player.player_name + " (" + current_action + "), maximum of " + str(player.max_targets[option_num]) + " target(s).")
                         
-                        player.actions.append(actionObject(current_action, action_dict[current_action]["priority"], player, targets))
+                        player.actions.append(actionObject(current_action, action_dict[current_action]["priority"], action_dict[current_action]["targeted"], player, targets, ))
                         self.action_queue.append(player.actions[-1]) # queue action
                         # ***I don't know if it's logically possible to find an action that doesn't have a queue IF the action regex and action priority
                         # dicts are up to date, but I should probably add error checking anyways
@@ -575,20 +620,18 @@ class game:
         self.disguise_nodes = []
         # *** I think targetting is screwed up because of the player_locations list now being a copy. That should just be made a list with player nums
         # action queue pre-processing
-        if any(action_obj.action == 'disguising' for action_obj in self.action_queue):
-            self.action_queue.append(actionObject('determineAppearances', action_dict['disguising']['priority'] + .1))
-        
-        # variables use to designate if action objects used for cleaning up action resolution have been queue'd or not
-        blackmailing = 0 
-        observing = 0
-        transporting = 0
+        #if any(action_obj.action == 'disguising' for action_obj in self.action_queue):
+        #    self.action_queue.append(actionObject('determineAppearances', action_dict['disguising']['priority'] + .1, 0))
 
         self.action_queue.sort(key = lambda x: x.priority) # sort action queue by priority
         self.player_locations = [player.player_num for player in self.players] # list that holds player_num and is shifted by Transporters
-        
+
         for action_obj in self.action_queue:
-            if action_obj.is_visit:
+            if action_obj.targeted:
+                
                 for i in range(len(action_obj.targets)):
+                    #print(action_obj.action)
+                    #print(action_obj.targets[i])
                     action_obj.targets[i] = self.targetText2PlayerNum(action_obj.targets[i])
                     #target_inds.append(self.targetText2PlayerNum(action_obj.targets[i])) 
                     #if (isinstance(action_obj.targets[i],str)): # for blocks I've done some replacing of the targets with their index numbers already. 
@@ -596,23 +639,23 @@ class game:
                         #target_inds.append(self.targetText2PlayerNum(action_obj.targets[i])) 
                     #else:
                         #target_inds.append(action_obj.targets[i])
-
-                    if "alerting" in self.players[action_obj.targets[i]].action_keywords: # *** this needs to be tested
-                        # *** I think this has issues cancelling multi-target actions
-                        # an alerting player can never be transported, so using self.players list directly
-                        # *** attackEval needs to be adjusted for the case of a Bodyguard protecting someone killed by Vet 
-                        if(self.players[action_obj.targets[i]].alerting == 1):
-                            action_obj.player.perpetuated["living_status"] = 0 # *** needs to be made an attack and resolved accordingly
-                            action_obj.player.notifications.append("You were killed by an alerting Veteran!\nWill?\n")
-                            action_obj.cancelled = 1
-                            self.players[action_obj.targets[i]].visitors.append(action_obj.player)
+                    if action_obj.is_visit:
+                        if "alerting" in self.players[action_obj.targets[i]].action_keywords: # *** this needs to be tested
+                            # *** I think this has issues cancelling multi-target actions
+                            # an alerting player can never be transported, so using self.players list directly
+                            # *** attackEval needs to be adjusted for the case of a Bodyguard protecting someone killed by Vet 
+                            if(self.players[action_obj.targets[i]].alerting == 1):
+                                action_obj.player.perpetuated["living_status"] = 0 # *** needs to be made an attack and resolved accordingly
+                                action_obj.player.notifications.append("You were killed by an alerting Veteran!\nWill?\n")
+                                action_obj.cancelled = 1
+                                self.players[action_obj.targets[i]].visitors.append(action_obj.player)
 
         while(self.action_queue): 
             action_obj = self.action_queue[0]
             target_inds = []
-            
             if not action_obj.cancelled:
-                if action_obj.is_visit:
+                
+                if action_obj.targeted:
                     for i in range(len(action_obj.targets)):
                         target_inds.append(action_obj.targets[i])
                         self.getTargetPlayer(target_inds[i]).visitors.append(action_obj.player)
@@ -639,7 +682,7 @@ class game:
                             action_obj.player.notifications.append("Your transport failed!")
                             self.players[target_inds[1]].notifications.append("Someone tried to transport you, but you were in jail!")
                         else:
-                            transporting = self.findResolutionObj(action_obj, target_inds, transporting)
+                            transporting = self.findResolutionObj(action_obj, target_inds)
                         #self.players[target_inds[0]].transported.append(self.players[target_inds[1]])
                         #self.players[target_inds[1]].transported.append(self.players[target_inds[0]])
                     case 'resolve_transporting':
@@ -661,16 +704,27 @@ class game:
 
                     case 'disguising':
                         # *** need to determine if a new disguise is disrupting non-detereminant old diguises
-        
+                        disguising = self.findResolutionObj(action_obj, target_inds)
                         # (don't want call to determineAppearances to shuffle non-determinant chains that haven't changed)
-                        for old_disguise in action_obj.player.perpetuated["active_disguise"]: # should only do anything if there was an active disguise already
-                            old_ind = self.targetText2PlayerNum(old_disguise)
-                            self.players[old_ind].perpetuated["disguises"].remove(action_obj.player)
+                        #print(action_obj.player.perpetuated["active_disguise"])
+                        #if action_obj.player.perpetuated["active_disguise"][0] != -1: # *** why the frick is this turning into a string
+                        #    print(action_obj.player.perpetuated["active_disguise"][0])
+                        #    disg0 = action_obj.player.perpetuated["active_disguise"][0]
+                        #    disg1 = action_obj.player.perpetuated["active_disguise"][1]
+
+                        #    self.players[disg0].perpetuated["disguises"].remove(disg1)
+                        #    self.players[disg1].perpetuated["disguises"].remove(disg0)
+                            #for disguise_ind, old_disguise in enumerate(action_obj.player.perpetuated["active_disguise"]): # should only do anything if there was an active disguise already
+                            #    if disguise_ind == 0: # probably a better way to do this, this is kinda gross
+                            #        old_ind = 1
+                            #    else:
+                            #        old_ind = 0
+                            #    self.players[old_disguise].perpetuated["disguises"].remove(old_ind)
                         # *** need to implement functionality of being unable to kill your disguise target night-of. Probably introduct faction attributes
-                        action_obj.player.perpetuated["active_disguise"] = [self.getTargetPlayer(target_inds[0]), self.getTargetPlayer(target_inds[1])]
+                        #action_obj.player.perpetuated["active_disguise"] = [self.getTargetPlayer(target_inds[0]).player_num, self.getTargetPlayer(target_inds[1]).player_num]
                         
-                        self.getTargetPlayer(target_inds[0]).perpetuated["disguises"].append(self.getTargetPlayer(target_inds[1]))
-                        self.getTargetPlayer(target_inds[1]).perpetuated["disguises"].append(self.getTargetPlayer(target_inds[0]))
+                        #self.getTargetPlayer(target_inds[0]).perpetuated["disguises"].append(self.getTargetPlayer(target_inds[1]).player_num)
+                        #self.getTargetPlayer(target_inds[1]).perpetuated["disguises"].append(self.getTargetPlayer(target_inds[0]).player_num)
 
                         #if (len(self.action_queue) > 1):
                         #    self.action_queue.insert(queue_ind + 1, actionObject('determineAppearance', action_dict["disguising"]["priority"] + .5, player = self.players[target_inds[0]]))
@@ -678,8 +732,8 @@ class game:
                         #    self.action_queue.insert(queue_ind + 1, actionObject('determineAppearance', action_dict["disguising"]["priority"] + .5, player = self.players[target_inds[0]]))
                             # *** idk I think there are probably a million better ways to do this
                             # this basically needs to run on each set of nodes (not implemented yet)
-                    case 'determineAppearances': # *** I need appearance to be perpetuated and only call this if a new disguise happens
-                        self.determineAppearances() # *** have determineAppearance include target
+                    case 'resolve_disguising':
+                        self.resolveDisguises(action_obj)
                     case 'blackmailing':
                         for remaining_action in self.action_queue: # *** this needs thorough testing
                             if  remaining_action.action[0] == "resolveBlackmails":
@@ -689,7 +743,7 @@ class game:
                                 break
 
                         if blackmailing == 0:
-                            self.action_queue.append(actionObject("resolveBlackmails", action_obj.priority, [action_obj.player], targets = [target_inds[0]]))
+                            self.action_queue.append(actionObject("resolveBlackmails", action_obj.priority, 0, [action_obj.player], targets = [target_inds[0]]))
                     case 'resolveBlackmails': 
                         self.resolveBlackmails(action_obj)
 
@@ -731,7 +785,7 @@ class game:
                                 break
 
                         if observing == 0:
-                            self.action_queue.append(actionObject("determineVisits", [action_obj.priority], [action_obj.player], targets = [target_inds[0]]))
+                            self.action_queue.append(actionObject("determineVisits", [action_obj.priority], 0, [action_obj.player], targets = [target_inds[0]]))
                     case 'determineVisits':
                         self.determineVisits(action_obj)
                     case 'wiretapping':
@@ -863,9 +917,11 @@ class game:
             notifications_file.write(indet + "\n")
 
     ## Helper Functions for Game Class
-    def findResolutionObj(self, action_obj, target_inds, resolution_exists): # *** need to go back and use this for BM and such. plus target_inds usage change
+    # *** the resolution_exists thing is weird
+    def findResolutionObj(self, action_obj, target_inds, resolution_exists = 0): # *** need to go back and use this for BM and such. plus target_inds usage change
         action_obj.targets = target_inds # here we do overwrite the actual target text with the target index, but this action is 
         # being discarded elsewhere anyways so it's fine
+        # *** I think this is fiexed so it's unnecessary. Test
         
         queue_here = 1
         for queue_ind, remaining_action in enumerate(self.action_queue): # *** this needs thorough testing
@@ -879,7 +935,7 @@ class game:
                     queue_here = queue_ind + 1
 
         if resolution_exists == 0:
-            self.action_queue.insert(queue_here, actionObject("resolve_" + action_obj.action, action_obj.priority, [action_obj]))
+            self.action_queue.insert(queue_here, actionObject("resolve_" + action_obj.action, action_obj.priority, 0, [action_obj]))
             resolution_exists = 1
 
         return resolution_exists # should always be 1, but better not to hard code it I suppose
@@ -1000,7 +1056,6 @@ class game:
                         self.indeterminant.append(indet_string)
 
                 player.notifications.append("Your target visited " + self.players[result].player_name + "!")
-
                 if(self.getTargetPlayer(action_obj.targets[obs_ind]).faction >= faction_dict["Mafia"]):
                     self.getTargetPlayer(action_obj.targets[obs_ind]).notifications.append("You were tracked! They saw you visit "
                         + self.players[result].player_name + ".")
@@ -1018,7 +1073,7 @@ class game:
         for location_ind, player in enumerate(self.players):
             if (player.player_name == target):
                 target_location = location_ind
-
+        
         if(target_location == -99): # I don't think this can even happen
             sys.exit("Target not found in player list: " + target)
         return target_location
@@ -1038,51 +1093,58 @@ class game:
         #       the players is not transporting and will be a sub-list of the player's transport action objects if they are. 
         # -cancel_list: list of len num_players. At the index corresponding to player_num, this list will be None if no cancellation
         #       objects are targetted at the player and will be a sub-list of the corresponding cancellation action objects if they are.
-        # -affected_locations: list of len num_players. At the index corresponding to their player_num, will be 0 if they are not being
-        #       transported, and 0 if they are. 
+        # -affected_locations: list of len num_players. At the index corresponding to their player_num, will be -2 if they are not being
+        #       transported, and -1 if they are. Passed into buildNodeList and used to track the index of the node set that contains 
+        #       a transport of that player. 
         # -nodes_to_eval: initialized to empty list. Used to hold eval status (0: eval not needed, 1: eval needed, 2: remove node) of
-        #       the transport node sets constructed by buildTransportNodes.
+        #       the transport node sets constructed by buildNodeList.
         # -nxt_nodes_to_eval: initialized to empty list. Used to hold eval status (0: eval not needed, 1: eval needed, 2: remove node) of
-        #       the transport node sets constructed by buildTransportNodes. Kept separately so that for loop can iterate through 
+        #       the transport node sets constructed by buildNodeList. Kept separately so that for loop can iterate through 
         #       nodes_to_eval without affecting the status the nodes should have as of the last pass. 
-        eval_obj = transportEvalList(cancel_list, resolve_obj, num_players)
+        eval_obj = evalObject(resolve_obj.player, num_players, cancel_list)
   
-        node_list = self.buildTransportNodes(eval_obj.transports_list) 
-        eval_obj.nodes_to_eval = [1] * len(node_list)
-        eval_obj.nxt_nodes_to_eval = [0] * len(node_list)
+        node_list = self.buildNodeList(eval_obj, update_eval=True) 
 
         # check for transporters that have a cancellation on their location and are not being transported. Cancel their actions first. 
         for i in range(num_players): 
-            if (eval_obj.cancel_list[i]) and (eval_obj.transports_list[i]) and (not eval_obj.affected_locations[i]):
-                self.cancelTransport(eval_obj, node_list, i)
+            if (eval_obj.cancel_list[i]) and (eval_obj.actions_list[i]) and (eval_obj.affected_locations[i] == 0):
+                self.cancelNodeAction(eval_obj, node_list, i)
 
-        while any(node_status == 1 for node_status in eval_obj.nodes_to_eval):
-            for node_ind, node_status in enumerate(eval_obj.nodes_to_eval):
-                if node_status == 1:
-                    eval_obj.nxt_nodes_to_eval[node_ind] = 0
+        while eval_obj.nxt_nodes_to_eval:
+            eval_obj.nodes_to_eval = eval_obj.nxt_nodes_to_eval.copy()
+            eval_obj.nxt_nodes_to_eval = []
 
-                    node_set = node_list[node_ind]["targets"]
-                    for location in node_set:
-                        self.player_locations[location] = self.players[location].player_num
-                    
-                    swap_node_list = [swap_node for swap_node in node_set if (node_set[swap_node] == 1)]       
-                    r.shuffle(swap_node_list)
-                    num_swaps = len(swap_node_list)
-                    
-                    for ind in range(num_swaps - 1):
-                        self.player_locations[swap_node_list[ind]] = swap_node_list[ind + 1]
-                    self.player_locations[swap_node_list[num_swaps - 1]] = swap_node_list[0]
+            for node_set in eval_obj.nodes_to_eval:
+                for location in node_set["targets"]:
+                    self.player_locations[location] = self.players[location].player_num
+                
+                swap_node_list = [swap_node for swap_node in node_set["targets"] if (node_set["targets"][swap_node] == 1)]       
+                r.shuffle(swap_node_list)
+                num_swaps = len(swap_node_list)
+                
+                for ind in range(num_swaps - 1):
+                    self.player_locations[swap_node_list[ind]] = swap_node_list[ind + 1]
+                self.player_locations[swap_node_list[num_swaps - 1]] = swap_node_list[0]
 
-                    transported_player_nums = list(node_set.keys())
-                    for player_num in transported_player_nums:
-                        if eval_obj.transports_list[player_num] and eval_obj.cancel_list[self.player_locations.index(player_num)]:
-                            self.cancelTransport(eval_obj, node_list, player_num)
+                #transported_player_nums = list(node_set.keys())
+                #for player_num in transported_player_nums:
+                players_to_cancel = []
+                for player_num in node_set["targets"]:
+                    if eval_obj.actions_list[player_num] and eval_obj.cancel_list[self.player_locations.index(player_num)]:
+                        players_to_cancel.append(player_num)
+
+                for player_num in players_to_cancel:
+                    self.cancelNodeAction(eval_obj, node_list, player_num)
 
             num_nodes = len(eval_obj.nxt_nodes_to_eval)
-            node_list = [node_list[i] for i in range(num_nodes) if eval_obj.nxt_nodes_to_eval[i] != 2]
-            eval_obj.nodes_to_eval = [eval_obj.nxt_nodes_to_eval[i] for i in range(num_nodes) if eval_obj.nxt_nodes_to_eval[i] != 2]
-            eval_obj.nxt_nodes_to_eval[:] = [0] * len(eval_obj.nodes_to_eval)
 
+        # set notifications for transported targets
+        for node_set in node_list:
+            for target in node_set['targets']:
+                for noti in range(node_set['targets'][target]):
+                    self.players[target].notifications.append("You were transported!")
+
+        # determine notifications for transporters that are transported into a block or control
         for i in range(num_players):
             if self.players[self.player_locations[i]].blocked > 0 or self.players[self.player_locations[i]].controlled > 0:  
                 blocks_on_location = 0
@@ -1096,132 +1158,179 @@ class game:
                 
                 num_diff = self.players[self.player_locations[i]].blocked - blocks_on_location
                 for noti_num in range(num_diff):
-                    self.players[self.player_locations[i]].notifications.append("You were transported into a block!")
+                    self.players[self.player_locations[i]].notifications.append("You were transported into a block!") # *** get exact noti
                 
                 num_diff = self.players[self.player_locations[i]].controlled - controls_on_location
                 for noti_num in range(num_diff):
                     self.players[self.player_locations[i]].notifications.append("You were transported into a control!")
 
-    def buildTransportNodes(self, transporters_list):
+    def buildNodeList(self, eval_obj, update_eval = False):
         node_list = []
-        for player in transporters_list:
-            if(player): # index is None if no transport is occuring
-                for transport in player:
-                    if(transport): 
-                        t0 = transport.targets[0]
-                        t1 = transport.targets[1]
-                        in_node = 0
-                        for node in node_list:
-                            if (t0 in node["targets"]) | (t1 in node["targets"]):
-                                node["targets"][t0] = node["targets"].get(t0, 0) + 1
-                                node["targets"][t1] = node["targets"].get(t1, 0) + 1
-                                node["transports"].append(transport)
-                                transport.node = node
-                                in_node = 1
-                                break
-                        if in_node == 0:
-                            node_list.append({"targets" : {t0: 1, t1: 1}, "transports" : [transport]})
-                            transport.node = node_list[-1]
-                    
-        return node_list        
+        num_nodes = 0
+
+        for player_actions in  eval_obj.actions_list:
+            if(player_actions): # index is None if no action is occuring
+                for action in player_actions:
+                    if(action): 
+                        num_nodes = self.addNode(node_list, action, eval_obj, num_nodes, update_eval)
+                                         
+        return node_list      
+
+    def cancelNodeAction(self, eval_obj, node_list, acting_player_num, same_night = True):
+    # same_night used to indicate visitors need to be removed (i.e. from Transports)
+            if(hasattr(eval_obj, "cancel_list")):
+                for action_obj in eval_obj.actions_list[acting_player_num]:
+                    action_obj.cancelled = 1
+
+                for cancellation in eval_obj.cancel_list[self.player_locations.index(acting_player_num)]:
+                    if cancellation.action == "blocking":
+                        self.players[acting_player_num].blocked += 1 
+                    elif cancellation.action == "controlling":
+                        self.players[acting_player_num].controlled += 1 
     
-    def cancelTransport(self, eval_obj, node_list, transported_player_num):
-        for transport in eval_obj.transports_list[transported_player_num]:
-            transport.cancelled = 1
+            for action_obj in eval_obj.actions_list[acting_player_num]:
+                node_set = eval_obj.node_set_by_player[action_obj.targets[0]]
+                
+                now_static_targets = 0
+    
+                for target_ind, target in enumerate(action_obj.targets):
+                    if same_night:
+                        self.players[target].visitors.remove(self.players[acting_player_num])
+    
+                    node_set["targets"][target] -= 1
+                    if node_set["targets"][target] < 1:
+                        now_static_targets += 1
+                        node_set["targets"].pop(target, None)
+                        #eval_obj.affected_locations[target] = 0
 
-        for cancellation in eval_obj.cancel_list[transported_player_num]:
-            if cancellation.action == "blocking":
-                self.players[transported_player_num].blocked += 1 
-            elif cancellation.action == "controlling":
-                self.players[transported_player_num].controlled += 1 
+                        if(hasattr(eval_obj, "cancel_list")):
+                            self.player_locations[target] = self.players[target].player_num
+                            if eval_obj.actions_list[target] and eval_obj.cancel_list[target]:
+                                self.cancelNodeAction(eval_obj, node_list, target) # recursive cancellations
+    
+                node_set["actions"].remove(action_obj)
+    
+                if(now_static_targets == 2): # both targets had only one action affecting them
+                    node_list.remove(node_set)
+                    if(node_set in eval_obj.nxt_nodes_to_eval):
+                        eval_obj.nxt_nodes_to_eval.remove(node_set)
+                    for target in node_set["targets"]:
+                        eval_obj.node_set_by_player[target] = None
+    
+                elif(now_static_targets == 0): # need to check for node split
+                    #action_inds = [action.player.player_num for action in node_set["actions"]]
+                    # *** game object should just store number of players at this point
+                    temp_eval_obj = evalObject(node_set["actions"], len(self.players))
+                    split_node_sets = self.buildNodeList(temp_eval_obj)
+                    if (split_node_sets[0] != node_set):
+                        node_list.remove(node_set)
+                        if(node_set in eval_obj.nxt_nodes_to_eval):
+                            eval_obj.nxt_nodes_to_eval.remove(node_set)
 
-        for transport_obj in eval_obj.transports_list[transported_player_num]:
-            node_list_ind = node_list.index(transport_obj.node)
-            eval_obj.nxt_nodes_to_eval[node_list_ind] = 1
+                        node_list.append(split_node_sets[0])
+                        node_list.append(split_node_sets[1])
+
+                        eval_obj.nxt_nodes_to_eval.append(split_node_sets[0])
+                        eval_obj.nxt_nodes_to_eval.append(split_node_sets[1])
+    
+                        node_list_len = len(node_list)
+
+                        for new_set in split_node_sets:
+                            for target in new_set["targets"]:
+                                eval_obj.node_set_by_player[target] = new_set
+                        #for target in node_list[node_list_len - 1]["targets"]:
+                            #eval_obj.affected_locations[target] = node_list_len - 1
+                            #transport.node = node_list[node_list_len - 1]
+
+                else:
+                    # *** do I want to set something to update if cancelling when there are still 2 or more targeting the node blah blah
+                    if(node_set not in eval_obj.nxt_nodes_to_eval):
+                        eval_obj.nxt_nodes_to_eval.append(node_set)
+            eval_obj.actions_list[acting_player_num] = None
+
+    def addNode(self, node_list, action, eval_obj, num_nodes, update_eval):
+        node_set_by_player = eval_obj.node_set_by_player
+        t0 = action.targets[0]
+        t1 = action.targets[1]
             
-            now_static_targets = 0
+        if (node_set_by_player[t0]) or (node_set_by_player[t1]):
+            if (node_set_by_player[t0]) and (node_set_by_player[t1] and (node_set_by_player[t0] is not node_set_by_player[t1])):
+                node_set = node_set_by_player[t0]
+                merging_nodes = node_set_by_player[t1]
+                #node_ind = node_list.index(node)
+                node_set.update(merging_nodes)
 
-            for target_ind, target in enumerate(transport_obj.targets):
-                self.players[target].visitors.remove(self.players[transported_player_num])
+                for merge_player in merging_nodes["targets"]:
+                    node_set_by_player[merge_player] = node_set
 
-                node_list[node_list_ind]["targets"][target] -= 1
-                if node_list[node_list_ind]["targets"][target] < 1:
-                    now_static_targets += 1
-                    self.player_locations[target] = self.players[target].player_num
-                    node_list[node_list_ind]["targets"].pop(target, None)
-                    if eval_obj.transports_list[target] and eval_obj.cancel_list[target]:
-                        self.cancelTransport(eval_obj, node_list, target) # recursive cancellations
+                node_list.remove(merging_nodes)
+                num_nodes -= 1
 
-            node_list[node_list_ind]["transports"].remove(transport_obj)
+            elif not node_set_by_player[t0]:
+                node_set_by_player[t0] = node_set_by_player[t1]
 
-            if(now_static_targets == 2): # both targets had only one transporter transporting them
-                eval_obj.nxt_nodes_to_eval[node_list_ind] = 2
+            elif not node_set_by_player[t1]: # I don't think there are logically any other cases but it's fine
+                node_set_by_player[t1] = node_set_by_player[t0]
+                
+            node_set = node_set_by_player[t0]
+            node_set["targets"][t0] = node_set["targets"].get(t0, 0) + 1
+            node_set["targets"][t1] = node_set["targets"].get(t1, 0) + 1
+            node_set["actions"].append(action)
 
-            elif(now_static_targets == 0): # need to check for node split
-                transp_inds = [transport for transport in node_list[node_list_ind]["transports"]]
-                new_nodes = self.buildTransportNodes([eval_obj.transporters_list[i] for i in transp_inds])
-                if (new_nodes[0] != node_list[node_list_ind]):
-                    node_list[node_list_ind] = new_nodes[0]
-                    node_list.append(new_nodes[1])
-                    eval_obj.nxt_nodes_to_eval.append(1)
+            # not tracking nxt_nodes_to_eval for split node calls
+            # only want to mark node for re-eval if something changes, so increasing both targets to 3 and beyond does not mark
+            if (update_eval) and (node_set["targets"][t0] <= 2) and (node_set["targets"][t0] <= 2):
+                if(node_set not in eval_obj.nxt_nodes_to_eval):
+                    eval_obj.nxt_nodes_to_eval.add(node_set) # *** fix
 
-                    node_list_len = len(node_list)
-                    for transport in node_list[node_list_len - 1]["transports"]:
-                        transport.node = node_list[node_list_len - 1]
+        else:
+            node_list.append({"targets" : {t0: 1, t1: 1}, "actions" : [action]})
+            node_set_by_player[t0] = node_list[-1]
+            node_set_by_player[t1] = node_list[-1] 
+            num_nodes = num_nodes + 1 # *** don't think I need to track this anymore
 
-        eval_obj.transports_list[transported_player_num] = None
+            if (update_eval): # *** fix
+                eval_obj.nxt_nodes_to_eval.append(node_list[-1])
 
-    def determineAppearances(self): # *** I should generalize this function so I can use it for transports and disguises
-        # *** this needs to determine if any pre-existing chains have been impacted
-        # go through all players 
-        # a player's chain needs evaluated if:
-        # they are disguised with one other person, but appear as themselves
-        # they are disguised with multiple people, but do not appear as themselves
-        # they are not disguised, but do not appear as themselves
-        # if a player does not need to be evaluated, remove from list
-        # if a player does need to be evaluated, evaluate all connected players in chain.
-        # for each connected player, remove them from the list to be evaluated later
-        players_to_check = self.players.copy()
-        while(players_to_check):
-            self.node_dict = {} 
-            needs_evaluated = 0
-            # build nodes
-            self.buildNodes(players_to_check[0],"disguise") # recursively fill out all connected nodes
-            # loop will remove all connected players before iterating again, eventually hitting all players
-            for player_num in self.node_dict:
-                players_to_check.remove(self.players[player_num])
-                if(needs_evaluated == 0):
-                    if (
-                    (((self.node_dict[player_num] == 0) | (self.node_dict[player_num] >= 2)) & (self.players[player_num].perpetuated["appearance"] != player_num)) |
-                    ((self.node_dict[player_num] == 1) & (self.players[player_num].perpetuated["appearance"] == player_num)) 
-                    ):                                 
-                        needs_evaluated = 1
-            if (needs_evaluated):
-                swap_node_list = [swap_node for swap_node in self.node_dict if (self.node_dict[swap_node] == 1)]    
+        return num_nodes
 
-                r.shuffle(swap_node_list)
-                num_swaps = len(swap_node_list)
-                for ind in range(num_swaps - 1):
-                    self.players[swap_node_list[ind]].perpetuated["appearance"] = swap_node_list[ind + 1]
-                self.players[swap_node_list[(num_swaps - 1)]].perpetuated["appearance"] = swap_node_list[0]
+    # *** Complete testing and test cases still need to be developed
+    def resolveDisguises(self, resolution_obj): 
+        old_disguises = []
+        for player in self.players:
+            if "active_disguise" in player.perpetuated:
+                if(player.perpetuated["active_disguise"][0] >= 0):
+                    old_disguises.append(actionObject("disguising", 0, 1, player, player.perpetuated["active_disguise"]))
+        eval_obj = evalObject(old_disguises, len(self.players))
 
-                for swap_node in swap_node_list:
-                    print(self.players[swap_node].player_name + " is appearing as " + self.players[self.players[swap_node].perpetuated["appearance"]].player_name)
+        node_list = self.buildNodeList(eval_obj)
+        num_nodes = len(node_list)
 
+        for new_disguise in resolution_obj.player:
+            active_disguise = eval_obj.actions_list[new_disguise.player.player_num][0]
+            if active_disguise: 
+                # *** Right now there can only ever be one active disguise per player, would need to re-write if that changes
+                self.cancelNodeAction(eval_obj, node_list, new_disguise.player.player_num, same_night=False)
+                t0 = self.getTargetPlayer(active_disguise.targets[0])
+                t1 = self.getTargetPlayer(active_disguise.targets[1])
+                t0.perpetuated["appearance"] = t0.player_num
+                t1.perpetuated["appearance"] = t1.player_num
+
+            num_nodes = self.addNode(node_list, new_disguise, eval_obj, num_nodes, update_eval=True)
         
-        #self.buildAppearanceNodes(action_obj.player) # recursively fill out all connected nodes
+        # don't need to update nxt_nodes_to_eval because this one doesn't loop, as opposed to the transport resolution
+        for node_set in eval_obj.nxt_nodes_to_eval:
+            swap_node_list = [swap_node for swap_node in node_set["targets"] if (node_set["targets"][swap_node] == 1)]    
 
-        #swap_node_list = [swap_node for swap_node in self.node_dict if (self.node_dict[swap_node] == 1)]    
+            r.shuffle(swap_node_list)
+            num_swaps = len(swap_node_list)
+            for ind in range(num_swaps - 1):
+                self.players[swap_node_list[ind]].perpetuated["appearance"] = swap_node_list[ind + 1]
+            self.players[swap_node_list[(num_swaps - 1)]].perpetuated["appearance"] = swap_node_list[0]
 
-        #r.shuffle(swap_node_list)
-        #num_swaps = len(swap_node_list)
-        #for ind in range(num_swaps - 1):
-        #    self.players[swap_node_list[ind]].role.appearance = swap_node_list[ind + 1]
-        #self.players[swap_node_list[(num_swaps - 1)]].role.appearance = swap_node_list[0]
-
-        #for swap_node in swap_node_list:
-            #print(self.players[swap_node].role.appearance)
-        #    print(self.players[swap_node].player_name + " is appearing as " + self.players[self.players[swap_node].role.appearance].player_name)
+            # *** This is a debug statement, can remove when done
+            for swap_node in swap_node_list:
+                print(self.players[swap_node].player_name + " is appearing as " + self.players[self.players[swap_node].perpetuated["appearance"]].player_name)
 
     def buildNodes(self, node, node_type):
     ##############################################################################################################################
@@ -1240,7 +1349,7 @@ class game:
     #   of calling this function on any node is to add all connected nodes to self.node_dict. 
     ##############################################################################################################################
         if node_type == "disguise":
-            connected_nodes = node.perpetuated["disguises"]
+            connected_nodes = node.disguises
         elif node_type == "transport": # *** Unused
             connected_nodes = node.transported
         else:
@@ -1254,41 +1363,42 @@ class game:
 
 ## Object Definitions for Use in Game Class
 class actionObject:
-    def __init__(self, action, priority, player = None,  targets = None):
+    def __init__(self, action, priority, targeted, player = None,  targets = None):
         self.action = action
         self.player = player
         self.priority = priority
+        self.targeted = targeted
         self.targets = targets
         self.is_visit = action_dict[self.action]["is_visit"]
         self.cancelled = 0
 
-class transportEvalList:
-    def __init__(self, cancel_list, resolution_obj, num_players):
-        self.cancel_list = [None] * num_players
-        self.transports_list = [None] * num_players
-
-        for cancellation in cancel_list:
-            if self.cancel_list[cancellation.targets[0]]:
-               self.cancel_list[cancellation.targets[0]].append(cancellation)
-            else:
-                self.cancel_list[cancellation.targets[0]] = [cancellation] # target is in a list     
-
-        self.affected_locations = [0] * num_players
-        for transport in resolution_obj.player:
-            if self.transports_list[transport.player.player_num]:
-                self.transports_list[transport.player.player_num].append(transport)
-            else:
-                self.transports_list[transport.player.player_num] = [transport]
-            
-            for target in transport.targets: 
-                self.affected_locations[target] = 1
-
+class evalObject:
+    def __init__(self, action_list, num_players, cancel_list = None):
+        self.actions_list = [None] * num_players
+        self.node_set_by_player = [None] * num_players
         self.nodes_to_eval = []
-
         self.nxt_nodes_to_eval = []
 
-    #def swapLocations(self, )
-        
+        # 0 indicates the player is not being affected by any node action,
+        # 1 indicates player is affected by at least one 
+        self.affected_locations = [0] * num_players
+
+        for action in action_list:
+            if self.actions_list[action.player.player_num]:
+                self.actions_list[action.player.player_num].append(action)
+            else:
+                self.actions_list[action.player.player_num] = [action]
+            
+            for target in action.targets: 
+                self.affected_locations[target] = 1
+
+        if cancel_list:
+            self.cancel_list = [None] * num_players
+            for cancellation in cancel_list:
+                if self.cancel_list[cancellation.targets[0]]:
+                    self.cancel_list[cancellation.targets[0]].append(cancellation)
+                else:
+                    self.cancel_list[cancellation.targets[0]] = [cancellation] # target is in a list  
 
 class roleSlot:
     def __init__(self, slot_name, role_name):
@@ -1315,7 +1425,7 @@ class player:
         self.notifications = []
 
         # role-dependent variables
-        self.faction = 0 
+        self.faction = faction_dict[role_class_dict[role_name]["faction"]]
         self.action_keywords = [] 
         self.max_actions = 0
         self.max_targets = []
@@ -1326,8 +1436,7 @@ class player:
         if(perpetuated_element):
             self.perpetuated = {
                 "appearance" : int(perpetuated_element.find("appearance").text),
-                "blackmail_immune" : int(perpetuated_element.find("blackmail_immune").text),
-                "disguises" : self.readListFromXML(perpetuated_element.find("disguises").text), 
+                "blackmail_immune" : int(perpetuated_element.find("blackmail_immune").text), 
                 "doused_by" : self.readListFromXML(perpetuated_element.find("doused_by").text),
                 "living_status" : int(perpetuated_element.find("living_status").text),
                 "potions" : int(perpetuated_element.find("potions").text)
@@ -1336,7 +1445,6 @@ class player:
             self.perpetuated = {
                 "appearance" : self.player_num,
                 "blackmail_immune" : 0,
-                "disguises" : [], 
                 "doused_by" : [],
                 "living_status" : 1,
                 "potions" : 0
@@ -1362,7 +1470,9 @@ class player:
                     self.addAction("jailing")
                     self.addAction("executing")
                     self.max_actions = 2
-
+            # ***Exe
+            #case 'Executioner':
+                #if(self.perpetuated["target"] is None): # Night 1, assign target
             case _:
                 for static_action in role_class_dict[self.role_name]["actions"]:
                     self.addAction(static_action)
@@ -1387,28 +1497,51 @@ class player:
             if(perpetuated_element):
                 if(type(role_class_dict[self.role_name]["perpetuated"]["default"][elem_ind]) is int):
                     self.perpetuated[expected_elem] = int(perpetuated_element.find(expected_elem).text)
-                else:
+                elif(type(role_class_dict[self.role_name]["perpetuated"]["default"][elem_ind]) is list):
                     self.perpetuated[expected_elem] = self.readListFromXML(perpetuated_element.find(expected_elem).text)
+                else:
+                    self.perpetuated[expected_elem] = perpetuated_element.find(expected_elem).text
             
             else:
                 self.perpetuated[expected_elem] = role_class_dict[self.role_name]["perpetuated"]["default"][elem_ind]
 
     def readListFromXML(self, text):
-        # takes XML data for a list stored as a string (i.e. "[1, 2, 3]") and re-constructs the list
+        # takes XML data for a list stored as one string (i.e. "[entry1, entry2, entry3]") and re-constructs the list as string entries. 
+        # Converts whole number entries to int type instead of string. 
         out_list = []
         iter = 0
-        if(not re.match(r"\[\]",text)):
-            text = re.sub(r"\[","",text)
-            text = re.sub(r"\]","",text)
-            while(re.match(r",\s",text)):
-                entry = re.search(r"(\A[A-Za-z0-9]+),\s",text).group(1)
-                out_list.append(entry)
-                text = re.sub(r"\A[A-Za-z]+,\s","",text)
+        list_regex_pattern = r"(\A\[.+\])(,\s){0,1}"
+        int_regex_pattern = r"(\A-{0,1}[0-9]+)(,\s){0,1}"
+        string_regex_pattern = r"(\A[A-Za-z0-9]+)(,\s){0,1}"
+        if(re.match(r"\A\[.*\]\Z",text)): # check if text represents a list
+            text = re.sub(r"\A\[","",text) # remove starting and ending brackets from text (text is used to check if all entries are read)
+            text = re.sub(r"\]\Z","",text) 
 
+            # iterate while text still has characters
+            while(text): 
+                # check if text matches the pattern for a nested list, an int, or default to string
+                if(re.match(list_regex_pattern, text)):
+                    search_pattern = list_regex_pattern
+                    entry = self.readListFromXML(re.search(list_regex_pattern, text).group(1)) # recursive f'n call for nested lists
+                elif(re.match(int_regex_pattern, text)):
+                    search_pattern = int_regex_pattern
+                    entry = int (re.search(search_pattern,text).group(1))
+                    
+                else:
+                    search_pattern = string_regex_pattern
+                    entry = re.search(search_pattern,text).group(1)
+
+                out_list.append(entry)
+                text = re.sub(search_pattern,"",text) # removal of pattern from text to meet while loop condition
+
+                # track iterations and break on 100 as a safety measure against getting stuck in this loop
                 iter = iter + 1
                 if(iter >= 100):
                     sys.exit("Error in readListFromXML, can't exit while loop")
-            out_list.append(text)
+
+        else:
+            sys.exit("Non-list passed to readListFromXML: " + text)
+        
         return out_list
 
     def addAction(self, action_keyword, max_targets = 0):
@@ -1417,5 +1550,3 @@ class player:
             self.max_targets.append(action_dict[action_keyword]["max_targets"])
         else:
             self.max_targets.append(max_targets) # variable max_targets can be input to addAction
-        
-        
