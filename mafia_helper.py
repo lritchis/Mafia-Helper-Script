@@ -35,7 +35,7 @@ action_dict = {
     }, # this is listed alongside saves in the info doc, but it is treated as a transcendent/0 priority action
     "igniting" : {"priority" : 0,
                      "is_visit" : 0,
-                     "targeted" : 1
+                     "targeted" : 0
     },
     "haunting" : {"priority" : 0,
                      "is_visit" : 0,
@@ -63,6 +63,7 @@ action_dict = {
     },
     "trapping" : {"priority" : 4,
                      "is_visit" : 1,
+                     "max_targets" : 2,
                      "targeted" : 1
     },
     "hallowing" : {"priority" : 5,
@@ -209,6 +210,19 @@ action_dict = {
     "attackEval" : 50
 }
 
+death_message_dict = {
+    "alerting" : "killed by an alerting Veteran",
+    "trapping" : "killed by a Trapper",
+    "killing" : "killed by a member of the Mafia",
+    "shooting" : "shot by a member of the Town",
+    "stabbing" : "stabbed by a Serial Killer",
+    "mauling" : "mauled by the Werewolf",
+    "igniting" : "ignited by an Arsonist",
+    "binding" : "life-bound to someone that died",
+    "hexing" : "hexed by a Necromancer",
+    "executing" : "executed by the Jailor"
+}
+
 def startsWVowel(text):
     if(re.match(r'\A[AEIOUaeiou]',text)):
         return 1
@@ -216,8 +230,10 @@ def startsWVowel(text):
         return 0
 
 investigator_categories = [
-    ["Jailor", "Scientist", "Bodyguard", "Godfather", "Arsonist", "Jester"],
-    ["Medium", "Doctor", "Janitor", "Shapeshifter", "Serial Killer", "Amnesiac"],
+    #["Jailor", "Scientist", "Bodyguard", "Godfather", "Arsonist", "Jester"],
+    #["Medium", "Doctor", "Janitor", "Shapeshifter", "Serial Killer", "Amnesiac"],
+    ["Scientist", "Bodyguard", "Shapeshifter", "Arsonist", "Jester"],
+    ["Medium", "Doctor", "Janitor", "Serial Killer", "Amnesiac"],
     ["Lookout", "Tracker", "Medic", "Stalker", "Werewolf", "Executioner"],
     ["Investigator", "Veteran", "Vigilante", "Consigliere", "Mafioso", "Necromancer"],
     ["Transporter", "Alchemist", "Trapper", "Courier", "Disguiser", "Lifebinder"],
@@ -308,11 +324,15 @@ role_class_dict = {
     },
 
     "Medic" : {"actions" : ["saving"],
-                "faction" : "Town"
+                "faction" : "Town",
+                "perpetuated" : {"item" : ["save", "self-save", "shots"],
+                                "default" : [1, 1, 1]}
     },
 
     "Trapper" : {"actions" : ["trapping"],
-                "faction" : "Town"
+                "faction" : "Town",
+                "perpetuated" : {"item" : ["num_traps", "traps_landed"], 
+                    "default": [2, []]}
     },
 
     "Veteran" : {"actions" : [],
@@ -320,7 +340,9 @@ role_class_dict = {
     },
 
     "Vigilante" : {"actions" : [],
-                "faction" : "Town"
+                "faction" : "Town",
+                "perpetuated" : {"item" : ["shots"],
+                                 "default" : [3]}
     },
 
     "Godfather" : {"actions" : ["killing"],
@@ -352,7 +374,9 @@ role_class_dict = {
     },
 
     "Janitor" : {"actions" : [],
-                "faction" : "Mafia"
+                "faction" : "Mafia",
+                "perpetuated" : {"item" : ["cleans"], 
+                                "default": [3]}
     },
 
     "Mafioso" : {"actions" : [],
@@ -368,7 +392,9 @@ role_class_dict = {
     },
 
     "Arsonist" : {"actions" : ["dousing"],
-                "faction" : "NK"
+                "faction" : "NK",
+                "perpetuated" : {"item" : ["douses", "first_douse"], 
+                                "default": [[], 1]}
     },
 
     "Serial Killer" : {"actions" : ["stabbing"],
@@ -380,15 +406,15 @@ role_class_dict = {
     },
 
     "Lifebinder" : {"actions" : ["binding"],
-                "faction" : "non-Town"
+                "faction" : "NE"
     },
 
     "Necromancer" : {"actions" : [],
-                "faction" : "non-Town"
+                "faction" : "NE"
     },
 
     "Witch" : {"actions" : ["controlling"],
-                "faction" : "non-Town"
+                "faction" : "NE"
     },
 
     "Amnesiac" : {"actions" : ["remembering"],
@@ -409,8 +435,9 @@ role_class_dict = {
 faction_dict = { # might add more to this, primarily just Town/non-Town distinguisher is needed in several cases
     "Town" : 1,
     "non-Town" : 2,
-    "Mafia" : 3,
-    "NK" : 4
+    "NE" : 3,
+    "Mafia" : 4,
+    "NK" : 5
 }
 
 # *** all the support code for reading/writing that is done in the other files should be placed as a f'n in this file instead
@@ -485,7 +512,9 @@ class game:
         num_living = 0
         GF_ind = -99
 
-        for player_num, category in enumerate(gameRoot):
+        self.night_num = int(gameRoot.find('Night').text) + 1
+
+        for player_num, category in enumerate(gameRoot[1:]):
             slot_name = category.tag
             # idk should I validate the category slot? should i even validate the role? idc i'm lazy
                 
@@ -507,7 +536,7 @@ class game:
                     GF_ind = player_num # note which player is a living Godfather
                     # *** there needs to be logic here for dueling Mafias
 
-            self.players.append(player(player_name, player_num, role_name, perpetuated_element))
+            self.players.append(player(player_name, player_num, role_name, self.night_num, perpetuated_element))
             self.categories.append(roleSlot(slot_name, role_name))
 
         if(num_living > int(len(self.players) / 2)):
@@ -517,8 +546,10 @@ class game:
     def parseActionFile(self, action_file):
         self.action_queue = []
         file = open(action_file, 'r')
-        self.night_num = file.readline() # the first line of the action file should be the night number 
-        self.night_num = re.sub(r"\n","",self.night_num)
+        #self.night_num =  
+        #self.night_num = re.sub(r"\n","",self.night_num)
+        # *** Might remove
+        file.readline() # the first line of the action file should be the night number
         # should I verify this? Yes. Will I? No
 
         while (True):
@@ -561,14 +592,13 @@ class game:
             while(action_text != ""):
                 found = 0
                 for option_num in range(len(player.action_keywords)): 
-                    current_action_regex = r"\A\s"+player.action_keywords[option_num]+r"\s"
+                    current_action_regex = r"\A\s"+player.action_keywords[option_num]+r"(\s|$)"
                     action_found = re.search(current_action_regex,action_text)
                     if(action_found): # \s needed so we are finding standalone keywords 
                         action_text = re.sub(action_found.group(), "", action_text) # remove found action from text
                         current_action = re.sub(r"\A\s|\s\Z","",action_found.group())
-                        
                         attempted_actions = attempted_actions + 1
-                        found = 1
+                        found = 1 # *** can probably remove a variable here. too lazy rn
                         
                         if attempted_actions > player.max_actions:
                             sys.exit("Error, too many actions attempted for " + player.player_name)
@@ -586,22 +616,22 @@ class game:
                         # *** taking multiple actions does not work, need to fix
                         #print(targetting_text)
                         num_commas = len(re.findall(",",targetting_text))
-                        if (num_commas > 0): # 3 or more targets
-                            for target_num in range(num_commas + 1):
+                        if(targetting_text):
+                            if (num_commas > 0): # 3 or more targets
+                                for target_num in range(num_commas + 1):
+                                    targets.append(re.search(r"\A[a-zA-Z0-9]+",targetting_text).group())
+                                    if(target_num <= num_commas):
+                                        targetting_text = re.sub(r"\A[a-zA-Z0-9]+,\s","",targetting_text)
+                            elif (re.search(r"\sand\s", targetting_text)): # two targets
                                 targets.append(re.search(r"\A[a-zA-Z0-9]+",targetting_text).group())
-                                if(target_num <= num_commas):
-                                    targetting_text = re.sub(r"\A[a-zA-Z0-9]+,\s","",targetting_text)
-                        elif (re.search(r"\sand\s", targetting_text)): # two targets
-                            targets.append(re.search(r"\A[a-zA-Z0-9]+",targetting_text).group())
-                            targetting_text = re.sub(r"\A[a-zA-Z0-9]+\sand\s","",targetting_text)
-                            targets.append(re.search(r"\A[a-zA-Z0-9]+",targetting_text).group())
-                        else: # single target
-                            targets.append(targetting_text)
-                        # *** I think I need a "no targets" case here, also Scientist
-                        if(len(targets) > player.max_targets[option_num]):
-                            sys.exit("Too many targets selected for " + player.player_name + " (" + current_action + "), maximum of " + str(player.max_targets[option_num]) + " target(s).")
+                                targetting_text = re.sub(r"\A[a-zA-Z0-9]+\sand\s","",targetting_text)
+                                targets.append(re.search(r"\A[a-zA-Z0-9]+",targetting_text).group())
+                            else: # single target
+                                targets.append(targetting_text)
+                            if(len(targets) > player.max_targets[option_num]):
+                                sys.exit("Too many targets selected for " + player.player_name + " (" + current_action + "), maximum of " + str(player.max_targets[option_num]) + " target(s).")
                         
-                        player.actions.append(actionObject(current_action, action_dict[current_action]["priority"], action_dict[current_action]["targeted"], player, targets, ))
+                        player.actions.append(actionObject(current_action, action_dict[current_action]["priority"], action_dict[current_action]["targeted"], player, targets))
                         self.action_queue.append(player.actions[-1]) # queue action
                         # ***I don't know if it's logically possible to find an action that doesn't have a queue IF the action regex and action priority
                         # dicts are up to date, but I should probably add error checking anyways
@@ -614,7 +644,8 @@ class game:
             #print("This player apparently has no action options? " +player.role.role + " " + player.player_name) # *** might make this an error idk
 
     def evaluateActions(self):  
-        self.public_announcements = []
+        #self.public_announcements = []
+        self.death_announcements = {}
         self.indeterminant = []
         self.attacks = []
         self.disguise_nodes = []
@@ -622,10 +653,14 @@ class game:
         # action queue pre-processing
         #if any(action_obj.action == 'disguising' for action_obj in self.action_queue):
         #    self.action_queue.append(actionObject('determineAppearances', action_dict['disguising']['priority'] + .1, 0))
+        
+        # *** This is a temp fix and resolution stuff needs to be cleaned up
+        observing = 0
 
         self.action_queue.sort(key = lambda x: x.priority) # sort action queue by priority
         self.player_locations = [player.player_num for player in self.players] # list that holds player_num and is shifted by Transporters
 
+        # *** entire section with how Vet and Trapper are resolved does not properly account for transports, blocks, controls, etc.
         for action_obj in self.action_queue:
             if action_obj.targeted:
                 
@@ -654,11 +689,32 @@ class game:
             action_obj = self.action_queue[0]
             target_inds = []
             if not action_obj.cancelled:
-                
                 if action_obj.targeted:
+
+                    # *** Whole section needs cleaned up / ported to its own function
+                    if (action_obj.player.faction >= faction_dict["non-Town"]) and (action_obj.is_visit):
+                        for i in range(len(action_obj.targets)):
+                            target = self.getTargetPlayer(action_obj.targets[i])
+                            if (target.trappers_targeting):
+                                for trapper_num in self.players[action_obj.targets[i]].trappers_targeting:
+                                    trapper = self.getTargetPlayerAbs(trapper_num)
+                                    if(action_obj.player.player_num in trapper.perpetuated["traps_landed"]):
+                                        trapper.perpetuated["traps_landed"].remove(action_obj.player.player_num)
+                                        trapper.perpetuated["num_traps"] = 1
+                                        action_obj.player.notifications.append("You were killed by a Trapper!\nWill?")
+                                        trapper.notifications.append("Your trap on " + target.player_name + " killed someone!")
+                                            # *** Account for saves
+                                            # *** Need to cancel action (not implemented properly)
+                                        action_obj.cancelled = 1
+                                    else:
+                                        trapper.perpetuated["traps_landed"].append(action_obj.player.player_num)
+                                        action_obj.player.notifications.append("You were trapped!")
+                                        trapper.notifications.append("Your trap on " + target.player_name + " was activated!") # *** re-write so only one noti
+
                     for i in range(len(action_obj.targets)):
                         target_inds.append(action_obj.targets[i])
-                        self.getTargetPlayer(target_inds[i]).visitors.append(action_obj.player)
+                        if action_obj.is_visit:
+                            self.getTargetPlayer(target_inds[i]).visitors.append(action_obj.player)
                 # *** need to implement immunities               
                 match (action_obj.action):
                     # *** one line actions resolved here, more complex ones resolved in standalone f'ns
@@ -694,11 +750,27 @@ class game:
                                 elif (remaining_action.priority > action_dict["blocking"]["priority"]):
                                     break     
                         self.resolveTransports(cancel_list, action_obj)
-                    case 'killing':
+                    case "trapping":
+                        for target_num in target_inds:
+                            target = self.getTargetPlayer(target_num)
+                            target.trappers_targeting.append(action_obj.player.player_num)
+                        print("***Needs implemented")
+                    case "hallowing":
+                        print("***Needs implemented")
+                    case 'delivering to':
+                        print("***Still needs implemented, dingus!")
+                    case 'saving':
+                        print("***Still needs implemented, dingus!")
+                        self.getTargetPlayer(target_inds[0]).protectors.append(action_obj)
+                    case 'killing': # *** both killing and shooting need work if restructuring attacks
                         self.getTargetPlayer(target_inds[0]).attackers.append(action_obj)
                         if(self.getTargetPlayer(target_inds[0]) not in self.attacks):
                             self.attacks.append(self.getTargetPlayer(target_inds[0]))
-                    
+                    case 'shooting':
+                        self.getTargetPlayer(target_inds[0]).attackers.append(action_obj)
+                        if(self.getTargetPlayer(target_inds[0]) not in self.attacks):
+                            self.attacks.append(self.getTargetPlayer(target_inds[0]))
+                        action_obj.player.perpetuated['shots'] -= 1
                     case 'blocking':
                         self.resolveBlock(self.getTargetPlayer(target_inds[0]))
 
@@ -746,16 +818,24 @@ class game:
                             self.action_queue.append(actionObject("resolveBlackmails", action_obj.priority, 0, [action_obj.player], targets = [target_inds[0]]))
                     case 'resolveBlackmails': 
                         self.resolveBlackmails(action_obj)
+                    case 'cleaning':
+                        # *** need to evaluate if all uses of getTargetPlayer are correct or if abs is needed
+                        self.getTargetPlayer(target_inds[0]).perpetuated["cleaned"] = 1
+                    case 'dousing':
+                        action_obj.player.perpetuated["first_douse"] = 0 # no need to check if it's 1, just assign it to 0
 
+                        for target in target_inds:
+                            self.getTargetPlayer(target).perpetuated["doused_by"].append(action_obj.player.player_num) # *** still to do activations, plus removing if Arso dies
+                            action_obj.player.perpetuated["douses"].append(target)
                     case 'investigating':
                         if action_obj.player.role_name == "Investigator":
-                            if(self.getTargetPlayer(target_inds[0]).perpetuated["doused_by"] == 1):
+                            if(self.getTargetPlayer(target_inds[0]).perpetuated["doused_by"]):
                                 result = investigator_categories_dict["Arsonist"]
                             else:
                                 result = investigator_categories_dict[self.getPlayerAppearance(self.getTargetPlayer(target_inds[0]),"role")]
 
-                        elif action_obj.player.role_name == "Consigliere":
-                            if(self.getTargetPlayer(target_inds[0]).perpetuated["doused_by"] == 1):
+                        elif (action_obj.player.role_name == "Consigliere") | (action_obj.player.role_name == "Necromancer"):
+                            if(self.getTargetPlayer(target_inds[0]).perpetuated["doused_by"]):
                                 result = "Arsonist"
                             else:
                                 result = self.getPlayerAppearance(self.getTargetPlayer(target_inds[0]),"role")
@@ -791,8 +871,27 @@ class game:
                     case 'wiretapping':
                         for target in target_inds:
                             self.players[target].notifications.append("You were wiretapped!")
+                    case 'igniting': # *** the way this targeting works will need to go in the README
+                        if(action_obj.targets):
+                            for douse_ind in action_obj.targets:
+                                douse_ind = int (douse_ind) - 1
+                                target_inds.append(action_obj.player.perpetuated["douses"][douse_ind])
+                        else:
+                            target_inds = action_obj.player.perpetuated["douses"].copy()
+
+                        for target in target_inds:
+                            action_obj.player.perpetuated["douses"].remove(target)
+                            self.players[target].perpetuated["doused_by"].remove(action_obj.player.player_num)
+
+                            if self.players[target].jailed: # *** could make a dict for phrasing from actions (i.e. igniting to ignite) if desired
+                                self.players[target].notifications.append("Someone tried to ignite you, but you were in jail!")
+                            elif (self.players[target].role_name == "Arsonist"):
+                                self.players[target].notifications.append("Someone tried to ignite you, but you are immune!")
+                                action_obj.player.notifications.append("You tried to ignite another Arsonist!") # *** idk if that's correct
+                            else:
+                                self.killPlayer(target, action_obj)
                     case _:
-                        print("Action defaulted")
+                        print("Action defaulted: " + action_obj.action)
                 
             self.action_queue.pop(0)
         
@@ -851,18 +950,24 @@ class game:
                         if indet == 1:
                             atk_options = attacked_player.attackers[0].player.player_name
                             prot_options = attacked_player.protectors[0].player.player_name
-                            for i in range(1,atk_prio_index):
+                            for i in range(1,atk_prio_index+1):
                                 atk_options = atk_options + ", " + attacked_player.attackers[i].player.player_name
-                            for i in range(1,prot_prio_index):
+                            for i in range(1,prot_prio_index+1):
                                 prot_options = prot_options + ", " + attacked_player.protectors[i].player.player_name
-                            self.indeterminant.append(attacked_player.player.player_name + ": " 
+                            self.indeterminant.append(attacked_player.player_name + ": " 
                                                       + attacked_player.attackers[chosen_attack].player.player_name + "(Options: " + atk_options + ") stopped by " 
-                                                      + attacked_player.attackers[chosen_protection].player.player_name + "(Options: " + prot_options + ")")
+                                                      + attacked_player.protectors[chosen_protection].player.player_name + " (Options: " + prot_options + ")")
                         
                         # ***TO DO here: 
                         # Do the particular resolving of the TP roles and relevant notifications
-                        # pop chosen attacker from attacker list and decrement num_attackers
-                        # pop chosen protector from protector list and decrement num_protectors
+                        # Particularities beyond priority need assessed
+                        attacked_player.protectors[chosen_protection].player.notifications.append("Someone tried to attack your target but you saved them!")
+                        attacked_player.attackers[chosen_attack].player.notifications.append("Your attack failed!")
+                        attacked_player.notifications.append("Someone tried to attack you but you were saved!")
+                        attacked_player.protectors.pop(chosen_protection)
+                        attacked_player.attackers.pop(chosen_attack)
+                        num_attackers -= 1 # *** idk that I even need to track the number like this
+                        num_protectors -= 1
 
                     else: # no protectors remaining
                         if(attacked_player.jailed == 1):
@@ -872,37 +977,49 @@ class game:
                             attacked_player.notifications.append("Someone tried to attack you but you are immune!")
                             attacked_player.attackers[0].player.notifications.append("You failed to kill your target!")
                         else:
-                            print(attacked_player.attackers[0].player.player_name + " is attacking " + attacked_player.player_name)
-                            match (attacked_player.attackers[0].action):
-                                case 'killing':
-                                    attacked_player.notifications.append("You were killed by a member of the Mafia!")
-                                    death_string = "killed by a member of the Mafia"
-                                case _: # default case, shouldn't happen
-                                    death_string = ""
-                                    print("Warning, no valid killing action identified in: " + attacked_player.attackers[0].action)
-                            attacked_player.notifications.append("Will?")
-                            attacked_player.perpetuated["living_status"] = 0
-
-                            # *** can modify this text to include "the" for unique roles. If I'm not lazy
-                            death_string = attacked_player.player_name + " died last night. He/She was " + death_string + ". He/She was "
-                            appearance = self.getPlayerAppearance(attacked_player,"role")
-                            
-                            if(startsWVowel(appearance)):
-                                death_string = death_string + "an "
-                            else:
-                                death_string = death_string + "a "
-                            death_string = death_string + appearance + "."
-                        
-                            self.public_announcements.append(death_string)
+                            #print(attacked_player.attackers[0].player.player_name + " is attacking " + attacked_player.player_name)
+                            self.killPlayer(attacked_player.player_num, attacked_player.attackers[0])
 
                         attacked_player.attackers.pop(0)
                         num_attackers = num_attackers - 1
-    
+
+    def killPlayer(self, player_num, death_source):
+        if death_source.action in death_message_dict:
+            self.players[player_num].perpetuated["living_status"] = 0
+            self.players[player_num].notifications.append("You were " + death_message_dict[death_source.action] + "!")
+
+            if(player_num not in self.death_announcements):
+                self.death_announcements[player_num] = [death_source.action]
+            else:
+                self.death_announcements[player_num].append(death_source.action)
+        else:
+            sys.exit("Death source not recognized: " + death_source.action)
+
     def writeNotifications(self, notifications_file):
-        notifications_file.write(self.night_num + " Results\n")
+        notifications_file.write(str(self.night_num) + " Results\n")
         notifications_file.write("Public Notifications:\n")
-        for noti in self.public_announcements:
+        for dead_player_num in self.death_announcements:
+            dead_player = self.getTargetPlayerAbs(dead_player_num)
+            noti = dead_player.player_name + " died last night. "
+            for death_source in self.death_announcements[dead_player_num]:
+                noti += "He/She was " + death_message_dict[death_source] + ". "
+            
+            # *** can modify this text to include "the" for unique roles. If I'm not lazy
+            noti += "He/She was "
+            if(dead_player.cleaned):
+                noti += "cleaned."
+            else:
+                appearance = self.getPlayerAppearance(dead_player,"role")
+                
+                if(startsWVowel(appearance)):
+                    noti += "an "
+                else:
+                    noti += "a "
+                noti += appearance + "."
+
             notifications_file.write(noti + "\n")
+
+            self.players[dead_player_num].notifications.append("Will?") # this is not writing out to the file, but prevents having repeat "Will?" messages
 
         notifications_file.write("__________________\n")
 
@@ -1015,6 +1132,15 @@ class game:
                             night_visits.setdefault(visitor.player_num, []).append(playa.player_num)  
                     all_visits = [visit for visitor in list(night_visits.values()) for visit in visitor]
 
+                    # this section can be un-commented to debug the list of all visits for the night
+                    #all_visitors = []
+                    #for visitor in night_visits.keys():
+                    #    for num_visits in range(len(night_visits[visitor])):
+                    #        all_visitors.append(visitor)
+                    #print(all_visitors)
+                    #for visit_ind, visitor in enumerate(all_visitors):
+                        #print(self.players[visitor].player_name + " to " + self.players[all_visits[visit_ind]].player_name)
+
                 tracked_target = self.getPlayerAppearance(self.getTargetPlayer(action_obj.targets[obs_ind])) # disguises swap who is effectively being tracked
                 
                 # obtain "result" where result is the player_num of the player that the target is tracked to
@@ -1047,11 +1173,11 @@ class game:
                     else: # if the apparent target did not visit, pull randomly from all the night's visits
                         result = r.choice(all_visits)
                         determined_night_visits[tracked_target.player_num] = result
-
+                        
                         indet_string = ("Random Tracker results for " + action_obj.player[obs_ind].player_name
                                 + " tracking " + self.getTargetPlayer(action_obj.targets[obs_ind]).player_name 
                                 + ", " + self.players[result].player_name 
-                                + " chosen from list of all visits tonight."
+                                + " chosen from list of all visits tonight. (" + str(len(all_visits)) + " total)"
                                 )
                         self.indeterminant.append(indet_string)
 
@@ -1328,9 +1454,9 @@ class game:
                 self.players[swap_node_list[ind]].perpetuated["appearance"] = swap_node_list[ind + 1]
             self.players[swap_node_list[(num_swaps - 1)]].perpetuated["appearance"] = swap_node_list[0]
 
-            # *** This is a debug statement, can remove when done
-            for swap_node in swap_node_list:
-                print(self.players[swap_node].player_name + " is appearing as " + self.players[self.players[swap_node].perpetuated["appearance"]].player_name)
+            # This section can be un-commented to debug disguises
+            #for swap_node in swap_node_list:
+                #print(self.players[swap_node].player_name + " is appearing as " + self.players[self.players[swap_node].perpetuated["appearance"]].player_name)
 
     def buildNodes(self, node, node_type):
     ##############################################################################################################################
@@ -1406,7 +1532,7 @@ class roleSlot:
         self.role_name = role_name
              
 class player:  
-    def __init__(self, player_name, player_num, role_name,  perpetuated_element = None):   
+    def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):   
         self.player_name = player_name
 
         # non-perpetuated class variables for evaluating night actions
@@ -1420,6 +1546,7 @@ class player:
         self.protectors = []
         self.role_name = role_name
         #self.transported = []
+        self.trappers_targeting = []
         self.visitors = []
         self.wiretapped = 0
         self.notifications = []
@@ -1436,7 +1563,8 @@ class player:
         if(perpetuated_element):
             self.perpetuated = {
                 "appearance" : int(perpetuated_element.find("appearance").text),
-                "blackmail_immune" : int(perpetuated_element.find("blackmail_immune").text), 
+                "blackmail_immune" : int(perpetuated_element.find("blackmail_immune").text),
+                "cleaned" :  int(perpetuated_element.find("cleaned").text),
                 "doused_by" : self.readListFromXML(perpetuated_element.find("doused_by").text),
                 "living_status" : int(perpetuated_element.find("living_status").text),
                 "potions" : int(perpetuated_element.find("potions").text)
@@ -1445,6 +1573,7 @@ class player:
             self.perpetuated = {
                 "appearance" : self.player_num,
                 "blackmail_immune" : 0,
+                "cleaned" : 0,
                 "doused_by" : [],
                 "living_status" : 1,
                 "potions" : 0
@@ -1456,6 +1585,13 @@ class player:
 
         if("perpetuated" in role_class_dict[self.role_name]):
             self.updatePerpetuated(perpetuated_element)
+
+        # *** this is ugly, might want to fix
+        #if self.faction >= faction_dict["non-Town"]:
+        #    if perpetuated_element:
+        #        self.perpetuated["trapped_by"] = self.readListFromXML(perpetuated_element.find("trapped_by").text)
+        #    else:
+        #        self.perpetuated["trapped_by"] = []
 
         if("immunities" in role_class_dict[self.role_name]):
             for immunity in role_class_dict[self.role_name]["immunities"]:
@@ -1470,6 +1606,39 @@ class player:
                     self.addAction("jailing")
                     self.addAction("executing")
                     self.max_actions = 2
+            case 'Alchemist':
+                self.addAction("delivering to", 2)
+                self.max_actions += 1
+                self.addAction("activating") # *** need to give self potion, and allow activation targets
+                self.max_actions += 1
+            case 'Medic':
+                self.addAction("saving") # *** this is not implemented at all
+                self.max_actions += 1
+                if(self.perpetuated["shots"]) and (night_num > 1):
+                    self.addAction("shooting")
+            case 'Vigilante':
+                if(self.perpetuated["shots"]) and (night_num > 1):
+                    self.addAction("shooting")
+                    self.max_actions += 1
+            case 'Janitor':
+                if (self.perpetuated["cleans"] > 0):
+                    self.addAction("cleaning")
+                    self.max_actions += 1
+            case 'Arsonist':
+                if(self.perpetuated["first_douse"]):
+                    self.addAction("dousing",2)
+                else:
+                    self.addAction("dousing",1)
+                self.max_actions += 1
+
+                if(self.perpetuated["douses"]):
+                    self.addAction("igniting",len(self.perpetuated["douses"]))
+                    if(night_num == 3):
+                        self.max_actions += 1
+
+            case 'Necromancer':
+                self.addAction("investigating") # *** also not implemented at all lol
+                self.max_actions += 1
             # ***Exe
             #case 'Executioner':
                 #if(self.perpetuated["target"] is None): # Night 1, assign target
@@ -1493,8 +1662,8 @@ class player:
     #   Use role_class_dict for the given role name to iterate through all expected items on the perpetuated list. 
     #   Pull data from the perpetuated_element if it exists, otherwise set to default from role_class_dict. 
     ##############################################################################################################################
-        for elem_ind, expected_elem in enumerate(role_class_dict[self.role_name]["perpetuated"]["item"]):
-            if(perpetuated_element):
+        if(perpetuated_element):
+            for elem_ind, expected_elem in enumerate(role_class_dict[self.role_name]["perpetuated"]["item"]):
                 if(type(role_class_dict[self.role_name]["perpetuated"]["default"][elem_ind]) is int):
                     self.perpetuated[expected_elem] = int(perpetuated_element.find(expected_elem).text)
                 elif(type(role_class_dict[self.role_name]["perpetuated"]["default"][elem_ind]) is list):
@@ -1502,8 +1671,9 @@ class player:
                 else:
                     self.perpetuated[expected_elem] = perpetuated_element.find(expected_elem).text
             
-            else:
-                self.perpetuated[expected_elem] = role_class_dict[self.role_name]["perpetuated"]["default"][elem_ind]
+        else:
+            for elem_ind, expected_elem in enumerate(role_class_dict[self.role_name]["perpetuated"]["item"]):
+                self.perpetuated[expected_elem] = role_class_dict[self.role_name]["perpetuated"]["default"][elem_ind]   
 
     def readListFromXML(self, text):
         # takes XML data for a list stored as one string (i.e. "[entry1, entry2, entry3]") and re-constructs the list as string entries. 
