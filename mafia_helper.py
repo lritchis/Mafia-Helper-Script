@@ -767,9 +767,9 @@ class game:
                         if(self.getTargetPlayer(target_inds[0]) not in self.attacks):
                             self.attacks.append(self.getTargetPlayer(target_inds[0]))
                     case 'shooting':
-                        self.getTargetPlayer(target_inds[0]).attackers.append(action_obj)
-                        if(self.getTargetPlayer(target_inds[0]) not in self.attacks):
-                            self.attacks.append(self.getTargetPlayer(target_inds[0]))
+                        self.getTargetPlayerAbs(target_inds[0]).attackers.append(action_obj)
+                        if(self.getTargetPlayerAbs(target_inds[0]) not in self.attacks):
+                            self.attacks.append(self.getTargetPlayerAbs(target_inds[0]))
                         action_obj.player.perpetuated['shots'] -= 1
                     case 'blocking':
                         self.resolveBlock(self.getTargetPlayer(target_inds[0]))
@@ -1006,7 +1006,7 @@ class game:
             
             # *** can modify this text to include "the" for unique roles. If I'm not lazy
             noti += "He/She was "
-            if(dead_player.cleaned):
+            if(dead_player.perpetuated["cleaned"]):
                 noti += "cleaned."
             else:
                 appearance = self.getPlayerAppearance(dead_player,"role")
