@@ -1458,35 +1458,6 @@ class game:
             #for swap_node in swap_node_list:
                 #print(self.players[swap_node].player_name + " is appearing as " + self.players[self.players[swap_node].perpetuated["appearance"]].player_name)
 
-    def buildNodes(self, node, node_type):
-    ##############################################################################################################################
-    # Function: buildNodes
-    # Class: game
-    # in: 
-    #   game self
-    #   player node: player object to be evaluated
-    #   str node_type: either "disguise" or "transport" to determine where to look for connected nodes. This function handles
-    #   both because the algorithm is the same. 
-    # out: 
-    #   None
-    # Description:
-    #   Adds the node's player_num attribute to self.node_dict as a key and a value equal to the number of disguises/transports
-    #   active on the target. If a connected node is not yet in node_dict, it calls this function for that node, so the result
-    #   of calling this function on any node is to add all connected nodes to self.node_dict. 
-    ##############################################################################################################################
-        if node_type == "disguise":
-            connected_nodes = node.disguises
-        elif node_type == "transport": # *** Unused
-            connected_nodes = node.transported
-        else:
-            sys.exit("Improper node_type for function buildNodes")
-
-        self.node_dict[node.player_num] = len(connected_nodes)
-            
-        for c_node in connected_nodes:
-            if(c_node.player_num not in self.node_dict):
-                self.buildNodes(c_node, node_type)
-
 ## Object Definitions for Use in Game Class
 class actionObject:
     def __init__(self, action, priority, targeted, player = None,  targets = None):
