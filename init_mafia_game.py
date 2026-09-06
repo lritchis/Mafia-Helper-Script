@@ -48,6 +48,10 @@ gameTree = ET.ElementTree(gameElement)
 #gameTree.append(gameElement)
 
 initActionsFile.write("Night X")
+nightElement = ET.Element("Night")
+nightElement.text = "0"
+gameElement.append(nightElement)
+
 for i in range(numPlayers):
     slotElement = ET.Element(gameVar.categories[i].slot_name)
     gameElement.append(slotElement)
