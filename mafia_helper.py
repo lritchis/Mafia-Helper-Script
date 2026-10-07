@@ -66,6 +66,10 @@ action_dict = {
                      "max_targets" : 2,
                      "targeted" : 1
     },
+    "trapping_atk" : {"priority" : 4,
+                         "is_visit" : 0,
+                         "targeted" : 0
+        },
     "hallowing" : {"priority" : 5,
                      "is_visit" : 1,
                      "max_targets" : 1,
@@ -99,6 +103,14 @@ action_dict = {
                      "max_targets" : 1,
                      "targeted" : 1
     },
+    "counterattacking" : {"priority" : 10, # used to create Bodyguard counterattack 
+                             "is_visit" : 0,
+                             "targeted" : 0
+            },
+    "sacrificing" : {"priority" : 10, # used to create the attack on Bodyguards 
+                         "is_visit" : 0,
+                         "targeted" : 0
+        },
     "saving" : {"priority" : 11,
                      "is_visit" : 1,
                      "max_targets" : 1,
@@ -147,8 +159,17 @@ action_dict = {
                      "max_targets" : 1,
                      "targeted" : 0
     },
-    "lifebinding" : 20,
-    "killing" : {"priority" : 21,
+    "binding" : {"priority" : 20,
+                         "is_visit" : 1,
+                         "max_targets" : 2,
+                         "targeted" : 1
+                },
+    "shooting" : {"priority" : 21,
+                         "is_visit" : 1,
+                         "max_targets" : 1,
+                         "targeted" : 1
+        },
+    "killing" : {"priority" : 22,
                      "is_visit" : 1,
                      "max_targets" : 1,
                      "targeted" : 1
@@ -169,11 +190,11 @@ action_dict = {
                      "max_targets" : 1,
                      "targeted" : 1
     },
-    "shooting" : {"priority" : 26,
-                     "is_visit" : 1,
-                     "max_targets" : 1,
-                     "targeted" : 1
-    },
+    "mauling_visitor" : {"priority" : 26,
+                         "is_visit" : 0,
+                         "targeted" : 0
+        },
+    
     "executing" : {"priority" : 27,
                      "is_visit" : 0,
                      "targeted" : 0
@@ -212,7 +233,10 @@ action_dict = {
 
 death_message_dict = {
     "alerting" : "killed by an alerting Veteran",
-    "trapping" : "killed by a Trapper",
+    "trapping_atk" : "killed by a Trapper",
+    "sacrificing" : "died protecting someone", # for use to set BG's message
+    "counterattacking" : "were killed by a Bodyguard", # *** verify
+    "protecting" : "you were killed by a Bodyguard", # *** not sure this is right
     "killing" : "killed by a member of the Mafia",
     "shooting" : "shot by a member of the Town",
     "stabbing" : "stabbed by a Serial Killer",
@@ -222,6 +246,25 @@ death_message_dict = {
     "hexing" : "hexed by a Necromancer",
     "executing" : "executed by the Jailor"
 }
+
+# some inefficiency but means I don't have to have these listed in the correct order, just in case
+atk_actions = ["killing", "alerting", "trapping_atk", "sacrificing", "counterattacking", "shooting",  "stabbing", "mauling"]
+atk_priority = [action_dict[atk]["priority"] for atk in atk_actions]
+atk_actions = [atk for _, atk in sorted(zip(atk_priority, atk_actions))]
+atk_state_map = {}
+for priority_ind, atk in enumerate(atk_actions):
+    atk_state_map[priority_ind] = atk
+    atk_state_map[atk] = priority_ind # this feels really weird but seems the best way to do it? Both directions are used
+num_atk_states = len(atk_actions)
+
+defense_actions = ["protecting", "saving", "self-saving", "blessing", "vesting"] # saving and activating have the same priority
+defense_priority = [action_dict[defense]["priority"] for defense in defense_actions]
+defense_actions = [defense for _, defense in sorted(zip(defense_priority, defense_actions))]
+defense_state_map = {}
+for priority_ind, defense in enumerate(defense_actions):
+    defense_state_map[priority_ind] = defense
+    defense_state_map[defense] = priority_ind
+num_defense_states = len(defense_actions)
 
 def startsWVowel(text):
     if(re.match(r'\A[AEIOUaeiou]',text)):
@@ -380,11 +423,15 @@ role_class_dict = {
     },
 
     "Mafioso" : {"actions" : [],
-                "faction" : "Mafia"
+                "faction" : "Mafia",
+                "perpetuated" : {"item" : ["shot"], 
+                                "default": [1]}
     },
 
     "Shapeshifter" : {"actions" : [],
-                "faction" : "Mafia"
+                "faction" : "Mafia",
+                "perpetuated" : {"item" : ["action"], 
+                                "default": [1]}
     },
 
     "Stalker" : {"actions" : ["stalking"],
@@ -508,6 +555,8 @@ class game:
         
         self.categories = []
         self.players = []
+        # will add 1 for every Townie found. Compared to a logical condition for finding the last Townie this is easier and should be just as efficient
+        self.num_town = 0 
 
         num_living = 0
         GF_ind = -99
@@ -535,6 +584,9 @@ class game:
                 if((role_name == 'Godfather')):
                     GF_ind = player_num # note which player is a living Godfather
                     # *** there needs to be logic here for dueling Mafias
+
+            if (role_class_dict[role_name]["faction"] == "Town"):
+                self.num_town += 1
 
             self.players.append(player(player_name, player_num, role_name, self.night_num, perpetuated_element))
             self.categories.append(roleSlot(slot_name, role_name))
@@ -618,19 +670,19 @@ class game:
                         num_commas = len(re.findall(",",targetting_text))
                         if(targetting_text):
                             if (num_commas > 0): # 3 or more targets
-                                for target_num in range(num_commas + 1):
-                                    targets.append(re.search(r"\A[a-zA-Z0-9]+",targetting_text).group())
+                                for target_num in range(num_commas + 1): # *** This needs to be improved, names are very limited rn
+                                    targets.append(re.search(r"\A[a-zA-Z0-9]+(\s[A-Z])?",targetting_text).group())
                                     if(target_num <= num_commas):
-                                        targetting_text = re.sub(r"\A[a-zA-Z0-9]+,\s","",targetting_text)
+                                        targetting_text = re.sub(r"\A[a-zA-Z0-9]+(\s[A-Z])?,\s","",targetting_text)
                             elif (re.search(r"\sand\s", targetting_text)): # two targets
-                                targets.append(re.search(r"\A[a-zA-Z0-9]+",targetting_text).group())
-                                targetting_text = re.sub(r"\A[a-zA-Z0-9]+\sand\s","",targetting_text)
-                                targets.append(re.search(r"\A[a-zA-Z0-9]+",targetting_text).group())
+                                targets.append(re.search(r"\A[a-zA-Z0-9]+(\s[A-Z])?",targetting_text).group())
+                                targetting_text = re.sub(r"\A[a-zA-Z0-9]+(\s[A-Z])?\sand\s","",targetting_text)
+                                targets.append(re.search(r"\A[a-zA-Z0-9]+(\s[A-Z])?",targetting_text).group())
                             else: # single target
                                 targets.append(targetting_text)
                             if(len(targets) > player.max_targets[option_num]):
                                 sys.exit("Too many targets selected for " + player.player_name + " (" + current_action + "), maximum of " + str(player.max_targets[option_num]) + " target(s).")
-                        
+                        print(targets)
                         player.actions.append(actionObject(current_action, action_dict[current_action]["priority"], action_dict[current_action]["targeted"], player, targets))
                         self.action_queue.append(player.actions[-1]) # queue action
                         # ***I don't know if it's logically possible to find an action that doesn't have a queue IF the action regex and action priority
@@ -648,7 +700,10 @@ class game:
         self.death_announcements = {}
         self.indeterminant = []
         self.attacks = []
-        self.disguise_nodes = []
+        self.kill_res_dict = {}
+        self.atks_dict = {}
+        self.defenses_dict = {}
+
         # *** I think targetting is screwed up because of the player_locations list now being a copy. That should just be made a list with player nums
         # action queue pre-processing
         #if any(action_obj.action == 'disguising' for action_obj in self.action_queue):
@@ -656,6 +711,7 @@ class game:
         
         # *** This is a temp fix and resolution stuff needs to be cleaned up
         observing = 0
+        blackmailing = 0
 
         self.action_queue.sort(key = lambda x: x.priority) # sort action queue by priority
         self.player_locations = [player.player_num for player in self.players] # list that holds player_num and is shifted by Transporters
@@ -759,10 +815,13 @@ class game:
                         print("***Needs implemented")
                     case 'delivering to':
                         print("***Still needs implemented, dingus!")
+                    case 'protecting':
+                        self.updateKillDicts(target_inds[0], action_obj, self.defenses_dict)
                     case 'saving':
-                        print("***Still needs implemented, dingus!")
-                        self.getTargetPlayer(target_inds[0]).protectors.append(action_obj)
+                        self.updateKillDicts(target_inds[0], action_obj, self.defenses_dict)
                     case 'killing': # *** both killing and shooting need work if restructuring attacks
+                        self.updateKillDicts(target_inds[0], action_obj, self.atks_dict)
+
                         self.getTargetPlayer(target_inds[0]).attackers.append(action_obj)
                         if(self.getTargetPlayer(target_inds[0]) not in self.attacks):
                             self.attacks.append(self.getTargetPlayer(target_inds[0]))
@@ -771,6 +830,8 @@ class game:
                         if(self.getTargetPlayerAbs(target_inds[0]) not in self.attacks):
                             self.attacks.append(self.getTargetPlayerAbs(target_inds[0]))
                         action_obj.player.perpetuated['shots'] -= 1
+                    case 'mauling':
+                        self.updateKillDicts(target_inds[0], action_obj, self.atks_dict)
                     case 'blocking':
                         self.resolveBlock(self.getTargetPlayer(target_inds[0]))
 
@@ -820,6 +881,7 @@ class game:
                         self.resolveBlackmails(action_obj)
                     case 'cleaning':
                         # *** need to evaluate if all uses of getTargetPlayer are correct or if abs is needed
+                        #*** I need to lower the number of cleans. But in reality I need to track resources separately from here somehow.
                         self.getTargetPlayer(target_inds[0]).perpetuated["cleaned"] = 1
                     case 'dousing':
                         action_obj.player.perpetuated["first_douse"] = 0 # no need to check if it's 1, just assign it to 0
@@ -834,7 +896,7 @@ class game:
                             else:
                                 result = investigator_categories_dict[self.getPlayerAppearance(self.getTargetPlayer(target_inds[0]),"role")]
 
-                        elif (action_obj.player.role_name == "Consigliere") | (action_obj.player.role_name == "Necromancer"):
+                        else: #(action_obj.player.role_name == "Consigliere") | (action_obj.player.role_name == "Necromancer"):
                             if(self.getTargetPlayer(target_inds[0]).perpetuated["doused_by"]):
                                 result = "Arsonist"
                             else:
@@ -894,99 +956,119 @@ class game:
                         print("Action defaulted: " + action_obj.action)
                 
             self.action_queue.pop(0)
-        
-        # *** need to write resolution to attacks
-        # *** this should probably go to a separate function?
-        # *** I might try to put this back into the action queue system idk
-        if(self.attacks): # if attacks list is populated with any attacks
-            for attacked_player in self.attacks:
-                attacked_player.attackers.sort(key = lambda x: x.priority) # sort attackers by priority
-                num_attackers = len(attacked_player.attackers)
-                num_protectors = len(attacked_player.protectors)
 
-                if(num_protectors):
-                    attacked_player.protectors.sort(key = lambda x: x.priority) # sort protectors by priority
-                    
-                atk_prio_index = -1 # indices are used to determine how many attackers/protectors have the lowest priority value (i.e should be prioritized)
-                prot_prio_index = -1
-                # I structure this list with a while loop and popping, in contrast to the action_queue. Primarily the popping here 
-                # allows me to keep the prio indices easily by assuming the attacks start at index 0... 
-                # will have to do something if I merge this back into the action_queue
-                while(num_attackers > 0): # go through each attack until there are none remaining. attacks removed from list when resolved
-                    if(num_protectors > 0):
-                        indet = 0 # should only have indeterminancies if there are protectors (***or shields I guess.......)
-                        # I don't think we need to track either index if there are no protectors left so this can go under the num_protectors if statement
-                        if atk_prio_index == -1: # when all attacks of the lowest priority are exhausted (or at start), this should be -1
-                            atk_prio_index = 0 # set to 0 since there will be at least one (at index [0]) attack of this priority
-                            if(num_attackers > 1):
-                                for atk in attacked_player.attackers[1:]:
-                                    if atk.priority == attacked_player.attackers[0].priority:
-                                        atk_prio_index = atk_prio_index + 1 # add 1 to value for every priority matching the attack at [0]
-                                    else:
-                                        break
-                        if (prot_prio_index == -1): # does the same thing for protectors
-                            prot_prio_index = 0
-                            if(num_protectors > 1):
-                                for prot in attacked_player.protectors[1:]:
-                                    if prot.priority == attacked_player.protectors[0].priority:
-                                        prot_prio_index = prot_prio_index + 1
-                                    else:
-                                        break
+        if (self.atks_dict): # *** need to add indeterminancy info
+            # *** debug code
+            #for player_num in self.atks_dict:
+                #print(player_num)
+                #for atk_type in self.atks_dict[player_num].actions:
+                    #print(atk_type)
 
-                        # randomize which attack/save is chosen among those of the same priority
-                        if(atk_prio_index > 0):
-                            chosen_attack = r.randint(0,atk_prio_index)
-                            indet = 1
-                        else:
-                            chosen_attack = 0
+            attacked_players_list = [player_num for player_num in self.atks_dict]
+            for player_num in attacked_players_list:
+                if player_num in self.defenses_dict:
+                    if "protecting" in self.defenses_dict[player_num].actions:
+                        if player_num in self.atks_dict:
+                            if "dousing" not in self.atks_dict[player_num].actions: # *** make this the else statement later. Need to add Arso 
+                                # *** might do this further up idk
+                                atk_state = self.atks_dict[player_num].determineState(from_start = 1, direct_only = 1)
+                                self.defenses_dict[player_num].determineState(from_start = 1, skip_bg = 0)
 
-                        if(prot_prio_index > 0):
-                            chosen_protection = r.randint(0,prot_prio_index)
-                            indet = 1
-                        else:
-                            chosen_protection = 0
+                                # I might re-write this as conditional on atk_state but idk that it matters either way
+                                while (self.atks_dict[player_num].state < num_atk_states) and (self.defenses_dict[player_num].actions["protecting"]):
+                                    defense_obj = self.defenses_dict[player_num].getAction()
+                                    attack_obj = self.atks_dict[player_num].getAction()
 
-                        # let the Narrator know that an indeterminancy took place
-                        if indet == 1:
-                            atk_options = attacked_player.attackers[0].player.player_name
-                            prot_options = attacked_player.protectors[0].player.player_name
-                            for i in range(1,atk_prio_index+1):
-                                atk_options = atk_options + ", " + attacked_player.attackers[i].player.player_name
-                            for i in range(1,prot_prio_index+1):
-                                prot_options = prot_options + ", " + attacked_player.protectors[i].player.player_name
-                            self.indeterminant.append(attacked_player.player_name + ": " 
-                                                      + attacked_player.attackers[chosen_attack].player.player_name + "(Options: " + atk_options + ") stopped by " 
-                                                      + attacked_player.protectors[chosen_protection].player.player_name + " (Options: " + prot_options + ")")
+                                    self.updateKillDicts(defense_obj.player.player_num, actionObject("sacrificing", 0, defense_obj.player), self.atks_dict)
+                                    self.updateKillDicts(attack_obj.player.player_num, actionObject("counterattacking", 0, defense_obj.player), self.atks_dict)
+
+                                    self.getTargetPlayer(defense_obj.targets[0]).notifications.append("You were protected by a Bodyguard!")
+
+                                    self.atks_dict[player_num].actions[atk_state].pop(0)
+                                    self.defenses_dict[player_num].actions["protecting"].pop(0)
+
+                                    if (not self.atks_dict[player_num].actions[atk_state]): # exhausted actions in this atk state, list empty
+                                        del self.atks_dict[player_num].actions[atk_state]
+                                        atk_state = self.atks_dict[player_num].determineState(from_start = 1, direct_only = 1)
+                                
+                                if not self.atks_dict[player_num]: # *** remove empty entry. Needs testing
+                                    del self.atks_dict[player_num]
+
+                            if "mauling" in self.atks_dict[player_num].actions: # this means Bodyguard did not line up on a maul, since it'd be removed
+                                for visitor in self.players[player_num].visitors:
+                                    for maul in self.atks_dict[player_num].actions["mauling"]:
+                                        if visitor != maul.player:
+                                            # *** I should update actionObject to only require the word, I can have the init handle the priority and targeted traits
+                                            self.updateKillDicts(visitor.player_num, actionObject("mauling_visitor", action_dict["mauling"]["priority"], 0, maul.player, [visitor]), self.atks_dict)
+
+            # *** I think the inner loops can be written as a function for both bg and the general case, and will add stuff for bg?
+            attacked_players_list = [player_num for player_num in self.atks_dict] 
+            for player_num in attacked_players_list:
+                atk_state = self.atks_dict[player_num].determineState(from_start = 1)
+
+                if player_num in self.defenses_dict:
+                    defense_state = self.defenses_dict[player_num].determineState(from_start = 1, skip_bg = 1)
+                else:
+                    defense_state = None
+
+                while (self.atks_dict[player_num].state < num_atk_states):
+                    if defense_state: # using the state condition prevents issues like inapplicable BGs from being an issue
+                        defense_obj = self.defenses_dict[player_num].getAction()
+                        attack_obj = self.atks_dict[player_num].getAction()
+
+                        # *** Update to distinguish between cases
+                        self.players[player_num].notifications.append("Someone tried to attack you, but you were saved!")
+                        self.players[defense_obj.player.player_num].notifications.append("Someone tried to attack [TARGET] but you saved them!")
+                        self.players[attack_obj.player.player_num].notifications.append("Your attack failed!")
+
+                        self.defenses_dict[player_num].actions[defense_state].pop(0)
+
+                        if (not self.defenses_dict[player_num].actions[defense_state]): # exhausted actions in this atk state, list empty
+                            del self.defenses_dict[player_num].actions[defense_state]
+                            defense_state = self.defenses_dict[player_num].determineState(from_start = 1, skip_bg = 1)
+
+                    else:
+                        attack_obj = self.atks_dict[player_num].getAction()
+                        self.killPlayer(player_num, attack_obj)
                         
-                        # ***TO DO here: 
-                        # Do the particular resolving of the TP roles and relevant notifications
-                        # Particularities beyond priority need assessed
-                        attacked_player.protectors[chosen_protection].player.notifications.append("Someone tried to attack your target but you saved them!")
-                        attacked_player.attackers[chosen_attack].player.notifications.append("Your attack failed!")
-                        attacked_player.notifications.append("Someone tried to attack you but you were saved!")
-                        attacked_player.protectors.pop(chosen_protection)
-                        attacked_player.attackers.pop(chosen_attack)
-                        num_attackers -= 1 # *** idk that I even need to track the number like this
-                        num_protectors -= 1
+                        if (attack_obj.action == "mauling") | (attack_obj.action == "mauling_visitor") | (attack_obj.action == "alerting"):
+                            # *** can be made better I think
+                            self.player[attack_obj.player.player_num].notifications.append("You attacked someone!")
 
-                    else: # no protectors remaining
-                        if(attacked_player.jailed == 1):
-                            attacked_player.notifications.append("Someone tried to attack you but you were in jail!")
-                            attacked_player.attackers[0].player.notifications.append("You failed to kill your target!") # *** idk that this is given to WWs
-                        elif(attacked_player.attackers[0].action in attacked_player.immunities):
-                            attacked_player.notifications.append("Someone tried to attack you but you are immune!")
-                            attacked_player.attackers[0].player.notifications.append("You failed to kill your target!")
-                        else:
-                            #print(attacked_player.attackers[0].player.player_name + " is attacking " + attacked_player.player_name)
-                            self.killPlayer(attacked_player.player_num, attacked_player.attackers[0])
+                    self.atks_dict[player_num].actions[atk_state].pop(0)
+                    if (not self.atks_dict[player_num].actions[atk_state]): # exhausted actions in this atk state, list empty
+                        del self.atks_dict[player_num].actions[atk_state]
+                        atk_state = self.atks_dict[player_num].determineState(from_start = 1)
 
-                        attacked_player.attackers.pop(0)
-                        num_attackers = num_attackers - 1
+                # We could remove entry from attacked list here if there were a reason to do that
+
+            # *** debug code
+            #print("After")
+            #for player_num in self.atks_dict:
+            #    print(player_num)
+            #    for atk_type in self.atks_dict[player_num].actions:
+            #        print(atk_type)  
+
+    def updateKillDicts(self, affected_player_num, action_obj, update_dict):
+        # there might be more efficient logic here, rn it adds the affected_player_num to the dict if it 
+        # isn't there and then checks against the particular action being in the dict
+        if affected_player_num not in update_dict:
+            if update_dict is self.atks_dict:
+                update_dict[affected_player_num] = atkResObject(affected_player_num)
+            elif update_dict is self.defenses_dict:
+                update_dict[affected_player_num] = defenseResObject(affected_player_num)
+            else:
+                sys.exit("Invalid update dict provided for f'n updateKillDicts")
+
+        if action_obj.action in update_dict[affected_player_num].actions:
+            update_dict[affected_player_num].actions[action_obj.action].append(action_obj)
+        else:
+            update_dict[affected_player_num].actions[action_obj.action] = [action_obj]
 
     def killPlayer(self, player_num, death_source):
         if death_source.action in death_message_dict:
             self.players[player_num].perpetuated["living_status"] = 0
-            self.players[player_num].notifications.append("You were " + death_message_dict[death_source.action] + "!")
+            self.players[player_num].notifications.append("You " + death_message_dict[death_source.action] + "!")
 
             if(player_num not in self.death_announcements):
                 self.death_announcements[player_num] = [death_source.action]
@@ -1433,12 +1515,12 @@ class game:
         num_nodes = len(node_list)
 
         for new_disguise in resolution_obj.player:
-            active_disguise = eval_obj.actions_list[new_disguise.player.player_num][0]
+            active_disguise = eval_obj.actions_list[new_disguise.player.player_num]
             if active_disguise: 
                 # *** Right now there can only ever be one active disguise per player, would need to re-write if that changes
                 self.cancelNodeAction(eval_obj, node_list, new_disguise.player.player_num, same_night=False)
-                t0 = self.getTargetPlayer(active_disguise.targets[0])
-                t1 = self.getTargetPlayer(active_disguise.targets[1])
+                t0 = self.getTargetPlayer(active_disguise[0].targets[0])
+                t1 = self.getTargetPlayer(active_disguise[0].targets[1])
                 t0.perpetuated["appearance"] = t0.player_num
                 t1.perpetuated["appearance"] = t1.player_num
 
@@ -1459,6 +1541,66 @@ class game:
                 #print(self.players[swap_node].player_name + " is appearing as " + self.players[self.players[swap_node].perpetuated["appearance"]].player_name)
 
 ## Object Definitions for Use in Game Class
+class killResObject: 
+    def __init__(self, player_num):
+        self.player_num = player_num
+        self.state = -1 # set uninitialized state to -1
+        self.actions = {}
+
+    def add_action(self, action_to_add):
+        action_type = action_to_add.action
+        if action_type in self.actions:
+            self.actions[action_type].append(action_to_add)
+        else:
+            self.actions[action_type] = [action_to_add]
+
+class atkResObject(killResObject):
+    def __init__(self, player_num):
+        super().__init__(player_num)
+    
+    def determineState(self, from_start = 0, direct_only = False):
+        if (from_start) | (self.state == -1):
+            self.state = 0
+
+        while self.state < num_atk_states: 
+            if (atk_state_map[self.state] in self.actions) and ((not direct_only) | action_dict[atk_state_map[self.state]]["targeted"]):
+                atk_state = atk_state_map[self.state]
+                r.shuffle(self.actions[atk_state])
+                return atk_state
+            else:
+                self.state += 1
+
+        return None
+
+    def getAction(self):
+        atk_state = atk_state_map[self.state]
+        return self.actions[atk_state][0]
+    
+class defenseResObject(killResObject):
+    def __init__(self, player_num):
+        super().__init__(player_num)
+
+    def determineState(self, from_start = 0, skip_bg = 1):
+        if (from_start) | (self.state == -1):
+            if skip_bg:
+                self.state = 1
+            else:
+                self.state = 0
+
+        while self.state < num_defense_states:
+            if (defense_state_map[self.state] in self.actions):
+                defense_state = defense_state_map[self.state]
+                r.shuffle(self.actions[defense_state])
+                return defense_state
+            else:
+                self.state += 1
+
+        return None
+
+    def getAction(self):
+        defense_state = defense_state_map[self.state]
+        return self.actions[defense_state][0]
+
 class actionObject:
     def __init__(self, action, priority, targeted, player = None,  targets = None):
         self.action = action
@@ -1489,7 +1631,7 @@ class evalObject:
             for target in action.targets: 
                 self.affected_locations[target] = 1
 
-        if cancel_list:
+        if cancel_list is not None:
             self.cancel_list = [None] * num_players
             for cancellation in cancel_list:
                 if self.cancel_list[cancellation.targets[0]]:
@@ -1582,6 +1724,10 @@ class player:
                 self.max_actions += 1
                 self.addAction("activating") # *** need to give self potion, and allow activation targets
                 self.max_actions += 1
+            case 'Bodyguard':
+                # *** vest needs to be added. I could also update to have roles add all static actions and then parse this list for conditionals
+                self.addAction("protecting")
+                self.max_actions += 1
             case 'Medic':
                 self.addAction("saving") # *** this is not implemented at all
                 self.max_actions += 1
@@ -1591,9 +1737,19 @@ class player:
                 if(self.perpetuated["shots"]) and (night_num > 1):
                     self.addAction("shooting")
                     self.max_actions += 1
+            case 'Mafioso':
+                if(self.perpetuated["shot"]):
+                    self.addAction("killing")
+                    self.max_actions += 1
             case 'Janitor':
                 if (self.perpetuated["cleans"] > 0):
                     self.addAction("cleaning")
+                    self.max_actions += 1
+            case 'Shapeshifter':
+                # *** need some manner of tracking the loss of action
+                if (self.perpetuated["action"]):
+                    self.addAction("cleaning")
+                    self.addAction("investigating")
                     self.max_actions += 1
             case 'Arsonist':
                 if(self.perpetuated["first_douse"]):
@@ -1606,9 +1762,14 @@ class player:
                     self.addAction("igniting",len(self.perpetuated["douses"]))
                     if(night_num == 3):
                         self.max_actions += 1
-
+            case 'Werewolf':
+                # *** needs to be variable by night
+                self.addAction("mauling",1)
+                self.addAction("stalking",1)
+                self.max_actions += 1
             case 'Necromancer':
                 self.addAction("investigating") # *** also not implemented at all lol
+                self.addAction("transporting")
                 self.max_actions += 1
             # ***Exe
             #case 'Executioner':
