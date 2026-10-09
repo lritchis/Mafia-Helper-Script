@@ -42,6 +42,11 @@ action_dict = {
                      "max_targets" : 1,
                      "targeted" : 0
     },
+        "reviving" : {"priority" : 0, # *** reviving can't be blocked, so it should be 0 priority
+                     "is_visit" : 0,
+                     "max_targets" : 1,
+                     "targeted" : 1
+    },
     # ***Exe target switching
     "jailing" : {"priority" : 1,
                      "is_visit" : 1,
@@ -235,11 +240,6 @@ action_dict = {
                      "is_visit" : 0,
                      "targeted" : 0
     },
-    "reviving" : {"priority" : 33,
-                     "is_visit" : 0,
-                     "max_targets" : 1,
-                     "targeted" : 1
-    },
     "attackEval" : 50
 }
 
@@ -363,7 +363,7 @@ role_class_dict = {
                      "default": [1]}
     },
 
-    "Retributionist" : {"actions" : [], # Retri can only revive if there is a dead Townie
+    "Retributionist" : {"actions" : ["reviving"], # *** May eventually want to place conditionals on this, idk
                 "faction" : "Town"
     },
 
@@ -634,11 +634,6 @@ class game:
             else:
                 print("Warning, cannot evaluate action due to incorrect format. Ignoring line: " + current_line)
 
-        #for action in self.action_queue:
-            #print(action.action)
-            #print(action.priority)
-            #print(action.targets)
-
     def queueActions(self, player, action_text): # this function parses action_text for actions that are possible given the input player,
     # creates an actionObject for each, and then adds that actionObject to game.action_queue
         action_text = re.sub(r"\n","",action_text) # remove any newline characters from action_text
@@ -664,7 +659,6 @@ class game:
                         if attempted_actions > player.max_actions:
                             sys.exit("Error, too many actions attempted for " + player.player_name)
                         
-                        #print(action_text)
                         if(re.search(r".+\s(" + all_actions_regex + r")\s",action_text)): # there is at least one more action
                             targetting_text = re.sub(r",\s(" + all_actions_regex + r").+", "", action_text) # remove the next action and everything after
                             action_text = re.sub(r"\A" + targetting_text + ",","",action_text)
@@ -675,7 +669,6 @@ class game:
                         # determine targets
                         targets = []
                         # *** taking multiple actions does not work, need to fix
-                        #print(targetting_text)
                         num_commas = len(re.findall(",",targetting_text))
                         if(targetting_text):
                             if (num_commas > 0): # 3 or more targets
@@ -691,7 +684,6 @@ class game:
                                 targets.append(targetting_text)
                             if(len(targets) > player.max_targets[option_num]):
                                 sys.exit("Too many targets selected for " + player.player_name + " (" + current_action + "), maximum of " + str(player.max_targets[option_num]) + " target(s).")
-                        print(targets)
                         player.actions.append(actionObject(current_action, action_dict[current_action]["priority"], action_dict[current_action]["targeted"], player, targets))
                         self.action_queue.append(player.actions[-1]) # queue action
                         # ***I don't know if it's logically possible to find an action that doesn't have a queue IF the action regex and action priority
@@ -707,6 +699,7 @@ class game:
     def evaluateActions(self):  
         #self.public_announcements = []
         self.death_announcements = {}
+        self.narrator_announcements = []
         self.indeterminant = []
         self.kill_res_dict = {}
         self.atks_dict = {}
@@ -789,17 +782,15 @@ class game:
                 # *** need to implement immunities               
                 match (action_obj.action):
                     # *** one line actions resolved here, more complex ones resolved in standalone f'ns
+                    case 'reviving':
+                        if self.players[target_inds[0]].perpetuated['living_status'] == 1:
+                            sys.exit("Error, Retributionist cannot revive a living player. (" + 
+                                     action_obj.player.player_name + " reviving " + self.players[target_inds[0]].player_name + ")")
                     case 'jailing': 
                         self.players[target_inds[0]].jailed = 1
                         # sets cannot_execute from 1 to 0 for the next night. Code has already verified against an illegal execution
                         # by not adding "executing" to jailorClass' action keywords when initialized
                         action_obj.player.cannot_execute = 0 
-                        #print(self.players[target_inds[0]].player_name)
-                        #print(self.players[target_inds[0]].role.jailed)
-
-                        #print(self.players[target_inds[0]].role.jailed)
-                        #print(self.players[target_inds[0]].player_name)
-                        #print(self.players[target_inds[0]].role.visitors)
                     case 'transporting':
                         # *** Wording needs checked, also untested
                         if self.players[target_inds[0]].jailed == 1:
@@ -974,7 +965,11 @@ class game:
                 
             self.action_queue.pop(0)
 
-        if (self.atks_dict): # *** need to add indeterminancy info
+        # *** TO-DO here:
+        #       -add indeterminancy info
+        #       -add BG/Arso interaction
+        #       -add vest/shield/jail functionality
+        if (self.atks_dict): # *** need to 
             # *** debug code
             #for player_num in self.atks_dict:
                 #print(player_num)
@@ -1051,6 +1046,13 @@ class game:
                         if attack_obj.action == "stabbing":
                             self.players[player_num].cleaned = 1
                         self.killPlayer(player_num, attack_obj)
+
+                        # *** needs all the logic surrounding disguises and cleans. Also need to figure out announcement order.
+                        if(self.players[player_num].role_name == "Retributionist"):
+                            if self.players[player_num].actions:
+                                rev_player_num = self.players[player_num].actions[0].targets[0]
+                                self.players[rev_player_num].perpetuated["living_status"] = 1
+                                self.narrator_announcements.append(self.players[rev_player_num].player_name + " WAS REVIVED BY THE RETRIBUTIONIST!")
                         
                         if (attack_obj.action == "mauling") | (attack_obj.action == "mauling_visitor") | (attack_obj.action == "alerting"):
                             # *** can be made better I think
@@ -1098,6 +1100,7 @@ class game:
         else:
             sys.exit("Death source not recognized: " + death_source.action)
 
+    # *** should consider the order I want announcements to be made in
     def writeNotifications(self, notifications_file):
         notifications_file.write(str(self.night_num) + " Results\n")
         notifications_file.write("Public Notifications:\n")
@@ -1124,6 +1127,9 @@ class game:
 
             self.players[dead_player_num].notifications.append("Will?") # this is not writing out to the file, but prevents having repeat "Will?" messages
 
+        for announcement in self.narrator_announcements:
+            notifications_file.write(announcement + "\n")
+        
         notifications_file.write("__________________\n")
 
         for player_num, player in enumerate(self.players):
