@@ -78,7 +78,8 @@ action_dict = {
     "controlling" : {"priority" : 6,
                      "is_visit" : 1,
                      "max_targets" : 1,
-                     "targeted" : 1
+                     "targeted" : 1,
+                     "hallow_cancels" : 1
     },
     "blocking" : {"priority" : 7,
                      "is_visit" : 1,
@@ -92,7 +93,8 @@ action_dict = {
     "disguising" : {"priority" : 9,
                      "is_visit" : 1,
                      "max_targets" : 2,
-                     "targeted" : 1
+                     "targeted" : 1,
+                     "hallow_cancels" : 1
     },
     "resolve_disguising" : {"priority" : 9.5,
                      "is_visit" : 0,
@@ -143,7 +145,8 @@ action_dict = {
     "blackmailing" : {"priority" : 17,
                      "is_visit" : 1,
                      "max_targets" : 1,
-                     "targeted" : 1
+                     "targeted" : 1,
+                     "hallow_cancels" : 1
     },
     'resolveBlackmails' : {"priority" : 17.5,
                      "is_visit" : 0,
@@ -154,6 +157,12 @@ action_dict = {
                      "max_targets" : 1,
                      "targeted" : 1
     },
+    "investigating_exact" : {"priority" : 18,
+                         "is_visit" : 1,
+                         "max_targets" : 1,
+                         "targeted" : 1,
+                         "hallow_cancels" : 1
+    },
     "checking" : {"priority" : 19,
                      "is_visit" : 0,
                      "max_targets" : 1,
@@ -162,7 +171,8 @@ action_dict = {
     "binding" : {"priority" : 20,
                          "is_visit" : 1,
                          "max_targets" : 2,
-                         "targeted" : 1
+                         "targeted" : 1,
+                         "hallow_cancels" : 1
                 },
     "shooting" : {"priority" : 21,
                          "is_visit" : 1,
@@ -178,7 +188,8 @@ action_dict = {
     "cleaning" : {"priority" : 23,
                      "is_visit" : 1,
                      "max_targets" : 1,
-                     "targeted" : 1
+                     "targeted" : 1,
+                     "hallow_cancels" : 1
     },
     "stabbing" : {"priority" : 24,
                      "is_visit" : 1,
@@ -217,7 +228,8 @@ action_dict = {
     "stalking" : {"priority" : 31,
                      "is_visit" : 1,
                       "max_targets" : 1,
-                     "targeted" : 1
+                     "targeted" : 1,
+                     "hallow_cancels" : 1
     },
     "determineVisits" : {"priority" : 31.5,
                      "is_visit" : 0,
@@ -232,19 +244,19 @@ action_dict = {
 }
 
 death_message_dict = {
-    "alerting" : "killed by an alerting Veteran",
-    "trapping_atk" : "killed by a Trapper",
+    "alerting" : "were killed by an alerting Veteran",
+    "trapping_atk" : "were killed by a Trapper",
     "sacrificing" : "died protecting someone", # for use to set BG's message
     "counterattacking" : "were killed by a Bodyguard", # *** verify
-    "protecting" : "you were killed by a Bodyguard", # *** not sure this is right
-    "killing" : "killed by a member of the Mafia",
-    "shooting" : "shot by a member of the Town",
-    "stabbing" : "stabbed by a Serial Killer",
-    "mauling" : "mauled by the Werewolf",
-    "igniting" : "ignited by an Arsonist",
-    "binding" : "life-bound to someone that died",
-    "hexing" : "hexed by a Necromancer",
-    "executing" : "executed by the Jailor"
+    "protecting" : "were killed by a Bodyguard", # *** not sure this is right
+    "killing" : "were killed by a member of the Mafia",
+    "shooting" : "were shot by a member of the Town",
+    "stabbing" : "were stabbed by a Serial Killer",
+    "mauling" : "were mauled by the Werewolf",
+    "igniting" : "were ignited by an Arsonist",
+    "binding" : "were life-bound to someone that died",
+    "hexing" : "were hexed by a Necromancer",
+    "executing" : "were executed by the Jailor"
 }
 
 # some inefficiency but means I don't have to have these listed in the correct order, just in case
@@ -301,15 +313,6 @@ for category in investigator_categories: # building the categories dictionary li
     for role in category:
         investigator_categories_dict[role] = invest_result   
 
-#investigator_categories_dict = {
-#    ("Jailor", "Scientist", "Bodyguard", "Godfather", "Arsonist", "Jester") : "a Jailor, Scientist, Bodyguard, Godfather, Arsonist, or Jester",
-#    ("Medium", "Doctor", "Janitor", "Shapeshifter", "Serial Killer", "Amnesiac"): "a Medium, Doctor, Janitor, Shapeshifter, Serial Killer, or Amnesiac",
-#    ("Lookout", "Tracker", "Medic", "Stalker", "Werewolf", "Executioner"): "a ",
-#    ("", "", "", "", "", ""): "a ",
-#    ("", "", "", "", "", ""): "a ",
-#    ("", "", "", "", "", ""): "a ",
-#}
-
 role_class_dict = {
     "Jailor" : {"actions" : ["jailing"],
                 "faction" : "Town",
@@ -355,7 +358,9 @@ role_class_dict = {
     },
 
     "Medium" : {"actions" : ["hallowing"],
-                "faction" : "Town"
+                "faction" : "Town",
+                "perpetuated" : {"item" : ["self-hallow"], 
+                     "default": [1]}
     },
 
     "Retributionist" : {"actions" : [], # Retri can only revive if there is a dead Townie
@@ -557,6 +562,7 @@ class game:
         self.players = []
         # will add 1 for every Townie found. Compared to a logical condition for finding the last Townie this is easier and should be just as efficient
         self.num_town = 0 
+        self.living_medium = 0
 
         num_living = 0
         GF_ind = -99
@@ -584,6 +590,9 @@ class game:
                 if((role_name == 'Godfather')):
                     GF_ind = player_num # note which player is a living Godfather
                     # *** there needs to be logic here for dueling Mafias
+                
+                elif((role_name == 'Medium')):
+                    self.living_medium = 1
 
             if (role_class_dict[role_name]["faction"] == "Town"):
                 self.num_town += 1
@@ -699,7 +708,6 @@ class game:
         #self.public_announcements = []
         self.death_announcements = {}
         self.indeterminant = []
-        self.attacks = []
         self.kill_res_dict = {}
         self.atks_dict = {}
         self.defenses_dict = {}
@@ -744,10 +752,17 @@ class game:
         while(self.action_queue): 
             action_obj = self.action_queue[0]
             target_inds = []
+
+            # *** Whole section needs cleaned up / ported to its own function
             if not action_obj.cancelled:
                 if action_obj.targeted:
-
-                    # *** Whole section needs cleaned up / ported to its own function
+                    if "hallow_cancels" in action_dict[action_obj.action]:
+                        for target in action_obj.targets:
+                            if self.getTargetPlayer(target).hallowed:
+                                action_obj.player.notifications.append("Your " + action_obj.action + " was blocked by the Medium's hallow!")
+                                action_obj.cancelled = 1
+            if not action_obj.cancelled:
+                if action_obj.targeted:
                     if (action_obj.player.faction >= faction_dict["non-Town"]) and (action_obj.is_visit):
                         for i in range(len(action_obj.targets)):
                             target = self.getTargetPlayer(action_obj.targets[i])
@@ -812,7 +827,13 @@ class game:
                             target.trappers_targeting.append(action_obj.player.player_num)
                         print("***Needs implemented")
                     case "hallowing":
-                        print("***Needs implemented")
+                        # *** this actually needs to be wrapped up in the blocking/controlling resolution, but it's fine for now
+                        if target_inds[0] == action_obj.player.player_num:
+                            if action_obj.player.perpetuated["self-hallow"]:
+                                action_obj.player.perpetuated["self-hallow"] = 0
+                            else:
+                                sys.exit("Error, indicated self-hallow when unavailable.")
+                        self.getTargetPlayer(target_inds[0]).hallowed = 1
                     case 'delivering to':
                         print("***Still needs implemented, dingus!")
                     case 'protecting':
@@ -821,15 +842,11 @@ class game:
                         self.updateKillDicts(target_inds[0], action_obj, self.defenses_dict)
                     case 'killing': # *** both killing and shooting need work if restructuring attacks
                         self.updateKillDicts(target_inds[0], action_obj, self.atks_dict)
-
-                        self.getTargetPlayer(target_inds[0]).attackers.append(action_obj)
-                        if(self.getTargetPlayer(target_inds[0]) not in self.attacks):
-                            self.attacks.append(self.getTargetPlayer(target_inds[0]))
                     case 'shooting':
-                        self.getTargetPlayerAbs(target_inds[0]).attackers.append(action_obj)
-                        if(self.getTargetPlayerAbs(target_inds[0]) not in self.attacks):
-                            self.attacks.append(self.getTargetPlayerAbs(target_inds[0]))
+                        self.updateKillDicts(target_inds[0], action_obj, self.atks_dict)
                         action_obj.player.perpetuated['shots'] -= 1
+                    case 'stabbing':
+                        self.updateKillDicts(target_inds[0], action_obj, self.atks_dict)
                     case 'mauling':
                         self.updateKillDicts(target_inds[0], action_obj, self.atks_dict)
                     case 'blocking':
@@ -1029,11 +1046,15 @@ class game:
 
                     else:
                         attack_obj = self.atks_dict[player_num].getAction()
+
+                        # *** TO-DO: Technically need to make this optional
+                        if attack_obj.action == "stabbing":
+                            self.players[player_num].cleaned = 1
                         self.killPlayer(player_num, attack_obj)
                         
                         if (attack_obj.action == "mauling") | (attack_obj.action == "mauling_visitor") | (attack_obj.action == "alerting"):
                             # *** can be made better I think
-                            self.player[attack_obj.player.player_num].notifications.append("You attacked someone!")
+                            self.players[attack_obj.player.player_num].notifications.append("You attacked someone!")
 
                     self.atks_dict[player_num].actions[atk_state].pop(0)
                     if (not self.atks_dict[player_num].actions[atk_state]): # exhausted actions in this atk state, list empty
@@ -1650,13 +1671,14 @@ class player:
 
         # non-perpetuated class variables for evaluating night actions
         self.actions = []
-        self.attackers = []
+        #self.attackers = []
         self.blocked = 0 
         self.controlled = 0
+        self.hallowed = 0
         self.immunities = []
         self.jailed = 0
         self.player_num = player_num # *** I might want to use player_num instead of passing players/names in a lot of places
-        self.protectors = []
+        #self.protectors = []
         self.role_name = role_name
         #self.transported = []
         self.trappers_targeting = []
