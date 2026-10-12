@@ -812,6 +812,18 @@ class game:
                                 elif (remaining_action.priority > action_dict["blocking"]["priority"]):
                                     break     
                         self.resolveTransports(cancel_list, action_obj)
+                    case "controlling":
+                        # *** does not actually implement a control
+                        target_player = self.getTargetPlayer(target_inds[0])
+                        target_player.notifications.append("You were controlled!")
+                        result = target_player.role_name                
+                        if startsWVowel(result):
+                            result = "an " + result
+                        else:
+                            result = "a " + result
+
+                        action_obj.player.notifications.append("Your target is " + result + "!")
+
                     case "trapping":
                         for target_num in target_inds:
                             target = self.getTargetPlayer(target_num)
@@ -892,11 +904,13 @@ class game:
                         #*** I need to lower the number of cleans. But in reality I need to track resources separately from here somehow.
                         self.getTargetPlayer(target_inds[0]).perpetuated["cleaned"] = 1
                     case 'dousing':
+
                         action_obj.player.perpetuated["first_douse"] = 0 # no need to check if it's 1, just assign it to 0
 
                         for target in target_inds:
-                            self.getTargetPlayer(target).perpetuated["doused_by"].append(action_obj.player.player_num) # *** still to do activations, plus removing if Arso dies
-                            action_obj.player.perpetuated["douses"].append(target)
+                            target_player = self.getTargetPlayer(target)
+                            target_player.perpetuated["doused_by"].append(action_obj.player.player_num) # *** still to do activations, plus removing if Arso dies
+                            action_obj.player.perpetuated["douses"].append(target_player.player_num)
                     case 'investigating':
                         if action_obj.player.role_name == "Investigator":
                             if(self.getTargetPlayer(target_inds[0]).perpetuated["doused_by"]):
@@ -1776,8 +1790,13 @@ class player:
             case 'Shapeshifter':
                 # *** need some manner of tracking the loss of action
                 if (self.perpetuated["action"]):
+                    self.addAction("blackmailing")
+                    self.addAction("blocking")
                     self.addAction("cleaning")
+                    self.addAction("disguising")
                     self.addAction("investigating")
+                    self.addAction("stalking")
+                    self.addAction("transporting")
                     self.max_actions += 1
             case 'Arsonist':
                 if(self.perpetuated["first_douse"]):
