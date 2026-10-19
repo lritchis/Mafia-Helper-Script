@@ -236,7 +236,7 @@ action_dict = {
                      "targeted" : 1,
                      "hallow_cancels" : 1
     },
-    "determineVisits" : {"priority" : 31.5,
+    "determineVisits" : {"priority" : [],
                      "is_visit" : 0,
                      "targeted" : 0
     },
@@ -260,6 +260,7 @@ death_message_dict = {
 }
 
 # some inefficiency but means I don't have to have these listed in the correct order, just in case
+# *** do I need mauling_visitor here? I don't actually know
 atk_actions = ["killing", "alerting", "trapping_atk", "sacrificing", "counterattacking", "shooting",  "stabbing", "mauling"]
 atk_priority = [action_dict[atk]["priority"] for atk in atk_actions]
 atk_actions = [atk for _, atk in sorted(zip(atk_priority, atk_actions))]
@@ -269,7 +270,23 @@ for priority_ind, atk in enumerate(atk_actions):
     atk_state_map[atk] = priority_ind # this feels really weird but seems the best way to do it? Both directions are used
 num_atk_states = len(atk_actions)
 
-defense_actions = ["protecting", "saving", "self-saving", "blessing", "vesting"] # saving and activating have the same priority
+# define attack characteristics flag: 0bABC
+# A is 1 if the attack is direct, 0 if indirect
+# B is 1 if it is stopped by Night Immunity or vest, 0 if not
+# C is 1 if is not stopped by an NE shield, 0 if it is (this one done counter-intuitively because of the negation on the condition)
+atk_flags = {
+    "killing" : 0b110,
+    "alerting" : 0b001,
+    "trapping_atk" : 0b001,
+    "sacrificing" : 0b001,
+    "counterattacking" : 0b001,
+    "shooting" : 0b111,
+    "stabbing" : 0b110,
+    "mauling" : 0b100
+}
+
+# *** vesting should not be a defense state, the action should create a night immune attribute
+defense_actions = ["protecting", "saving", "self-saving", "blessing"] # *** saving and activating have the same priority. Activating needs to queue object as a save
 defense_priority = [action_dict[defense]["priority"] for defense in defense_actions]
 defense_actions = [defense for _, defense in sorted(zip(defense_priority, defense_actions))]
 defense_state_map = {}
@@ -316,8 +333,7 @@ for category in investigator_categories: # building the categories dictionary li
 role_class_dict = {
     "Jailor" : {"actions" : ["jailing"],
                 "faction" : "Town",
-                "perpetuated" : {"item" : ["cannot_execute", "executions"], 
-                                 "default": [1, 3]}
+                "perpetuated" : {"cannot_execute" : 1, "executions" : 3}
     },
 
     "Investigator" : {"actions" : ["investigating"],
@@ -359,8 +375,7 @@ role_class_dict = {
 
     "Medium" : {"actions" : ["hallowing"],
                 "faction" : "Town",
-                "perpetuated" : {"item" : ["self-hallow"], 
-                     "default": [1]}
+                "perpetuated" : {"self-hallow" : 1}
     },
 
     "Retributionist" : {"actions" : ["reviving"], # *** May eventually want to place conditionals on this, idk
@@ -373,31 +388,27 @@ role_class_dict = {
 
     "Medic" : {"actions" : ["saving"],
                 "faction" : "Town",
-                "perpetuated" : {"item" : ["save", "self-save", "shots"],
-                                "default" : [1, 1, 1]}
+                "perpetuated" : {"save" : 1, "self-save" : 1, "shots" : 1}
     },
 
     "Trapper" : {"actions" : ["trapping"],
                 "faction" : "Town",
-                "perpetuated" : {"item" : ["num_traps", "traps_landed"], 
-                    "default": [2, set()]}
+                "perpetuated" : {"num_traps" : 2, "traps_landed" : set()}
     },
 
     "Veteran" : {"actions" : [],
                 "faction" : "Town",
-                "perpetuated" : {"item" : ["alerts","vests"],
-                    "default" : [3,1]}
+                "perpetuated" : {"alerts" : 3,"vests" : 1}
     },
 
     "Vigilante" : {"actions" : [],
                 "faction" : "Town",
-                "perpetuated" : {"item" : ["shots"],
-                                 "default" : [3]}
+                "perpetuated" : {"shots" : 3}
     },
 
     "Godfather" : {"actions" : ["killing"],
                 "faction" : "Mafia",
-                "immunities" : ["killing", "shooting", "stabbing"]
+                "night_immune" : 1
     },
 
     "Blackmailer" : {"actions" : ["blackmailing"],
@@ -419,26 +430,22 @@ role_class_dict = {
 
     "Disguiser" : {"actions" : ["disguising"],
                 "faction" : "Mafia",
-                "perpetuated" : {"item" : ["active_disguise"], 
-                                 "default": [[-1, -1]]}
+                "perpetuated" : {"active_disguise" : [-1, -1]}
     },
 
     "Janitor" : {"actions" : [],
                 "faction" : "Mafia",
-                "perpetuated" : {"item" : ["cleans"], 
-                                "default": [3]}
+                "perpetuated" : {"cleans" : 3}
     },
 
     "Mafioso" : {"actions" : [],
                 "faction" : "Mafia",
-                "perpetuated" : {"item" : ["shot"], 
-                                "default": [1]}
+                "perpetuated" : {"shot" : 1}
     },
 
     "Shapeshifter" : {"actions" : [],
                 "faction" : "Mafia",
-                "perpetuated" : {"item" : ["action"], 
-                                "default": [1]}
+                "perpetuated" : {"action" : 1}
     },
 
     "Stalker" : {"actions" : ["stalking"],
@@ -447,38 +454,43 @@ role_class_dict = {
 
     "Arsonist" : {"actions" : ["dousing"],
                 "faction" : "NK",
-                "perpetuated" : {"item" : ["douses", "first_douse"], 
-                                "default": [[], 1]}
+                "night_immune" : 1,
+                "perpetuated" : {"douses" : [], "first_douse" : 1} # *** douses can be a set
     },
 
     "Serial Killer" : {"actions" : ["stabbing"],
-                "faction" : "NK"
+                "faction" : "NK",
+                "night_immune" : 1,
     },
 
     "Werewolf" : {"actions" : [],
-                "faction" : "NK"
+                "faction" : "NK",
+                "night_immune" : 1
     },
 
     "Lifebinder" : {"actions" : ["binding"],
-                "faction" : "NE"
+                "faction" : "NE",
+                "perpetuated" : {"shield" : 1}
     },
 
     "Necromancer" : {"actions" : [],
-                "faction" : "NE"
+                "faction" : "NE",
+                "perpetuated" : {"shield" : 1}
     },
 
     "Witch" : {"actions" : ["controlling"],
-                "faction" : "NE"
+                "faction" : "NE",
+                "perpetuated" : {"shield" : 1}
     },
 
     "Amnesiac" : {"actions" : ["remembering"],
-                "faction" : "non-Town"
+                "faction" : "non-Town",
+                "perpetuated" : {"shield" : 1}
     },
 
     "Executioner" : {"actions" : [],
                 "faction" : "non-Town",
-                "perpetuated" : {"item" : ["switch", "target"], 
-                                 "default": [1, None]}
+                "perpetuated" : {"switch" : 1, "target" : None}
     },
 
     "Jester" : {"actions" : [],
@@ -686,7 +698,7 @@ class game:
                                 targets.append(targetting_text)
                             if(len(targets) > player.max_targets[option_num]):
                                 sys.exit("Too many targets selected for " + player.player_name + " (" + current_action + "), maximum of " + str(player.max_targets[option_num]) + " target(s).")
-                        player.actions.append(actionObject(current_action, action_dict[current_action]["priority"], action_dict[current_action]["targeted"], player, targets))
+                        player.actions.append(actionObject(current_action, player, targets))
                         self.action_queue.append(player.actions[-1]) # queue action
                         # ***I don't know if it's logically possible to find an action that doesn't have a queue IF the action regex and action priority
                         # dicts are up to date, but I should probably add error checking anyways
@@ -713,8 +725,8 @@ class game:
         #    self.action_queue.append(actionObject('determineAppearances', action_dict['disguising']['priority'] + .1, 0))
         
         # *** This is a temp fix and resolution stuff needs to be cleaned up
-        observing = 0
-        blackmailing = 0
+        observing = None
+        blackmailing = 0 # *** fix to match?
 
         self.action_queue.sort(key = lambda x: x.priority) # sort action queue by priority
         self.player_locations = [player.player_num for player in self.players] # list that holds player_num and is shifted by Transporters
@@ -731,11 +743,13 @@ class game:
         while(self.action_queue): 
             action_obj = self.action_queue[0]
             target_inds = []
-            
-            if action_obj.is_visit:
+
+            if action_obj.targeted:
                 for i in range(len(action_obj.targets)): # *** I think I can just get rid of target_inds...
-                    target_inds.append(action_obj.targets[i])
-                self.processVisit(target_inds, action_obj)
+                    target_inds.append(self.getTargetPlayer(action_obj.targets[i]).player_num)
+                if action_obj.is_visit:
+                    self.processVisit(target_inds, action_obj)
+                
             # *** need to implement immunities               
             match (action_obj.action):
                 # *** one line actions resolved here, more complex ones resolved in standalone f'ns
@@ -804,10 +818,13 @@ class game:
                     self.updateKillDicts(target_inds[0], action_obj, self.defenses_dict)
                 case 'saving':
                     self.updateKillDicts(target_inds[0], action_obj, self.defenses_dict)
-                case 'vesting':
-                    self.updateKillDicts(action_obj.player.player_num, action_obj, self.defenses_dict)
-                    if action_obj.player.role != "Necromancer":
-                        action_obj.player.perpetuated["vests"] -= 1
+                case 'vesting': 
+                    action_obj.player.vesting = 1
+                    #self.updateKillDicts(action_obj.player.player_num, action_obj, self.defenses_dict)
+
+                    # idk why I had this at all
+                    #if action_obj.player.role != "Necromancer":
+                    #    action_obj.player.perpetuated["vests"] -= 1
                     if action_obj.player.role != "Veteran":
                         action_obj.player.perpetuated["alerts"] -= 1
                 case 'killing': # *** both killing and shooting need work if restructuring attacks
@@ -855,6 +872,7 @@ class game:
                 case 'resolve_disguising':
                     self.resolveDisguises(action_obj)
                 case 'blackmailing':
+                    self.resolveBlackmails(action_obj)
                     for remaining_action in self.action_queue: # *** this needs thorough testing
                         if  remaining_action.action[0] == "resolveBlackmails":
                             remaining_action.player.append(action_obj.player)
@@ -863,7 +881,7 @@ class game:
                             break
 
                     if blackmailing == 0:
-                        self.action_queue.append(actionObject("resolveBlackmails", action_obj.priority, 0, [action_obj.player], targets = [target_inds[0]]))
+                        self.action_queue.append(actionObject("resolveBlackmails", [action_obj.player], targets = [target_inds[0]]))
                 case 'resolveBlackmails': 
                     self.resolveBlackmails(action_obj)
                 case 'cleaning':
@@ -907,16 +925,18 @@ class game:
                     else:
                         sys.exit(action_obj.targets[0] + " not found in role list for player: " + action_obj.player.player_name)
                 case 'watching' | 'tracking' | 'stalking':
-                    for remaining_action in self.action_queue: # *** this needs thorough testing
-                        if  remaining_action.action == "determineVisits":
-                            remaining_action.priority.append(action_obj.priority)
-                            remaining_action.player.append(action_obj.player)
-                            remaining_action.targets.append(target_inds[0])
-                            observing = 1
-                            break
-
-                    if observing == 0:
-                        self.action_queue.append(actionObject("determineVisits", [action_obj.priority], 0, [action_obj.player], targets = [target_inds[0]]))
+                    # *** I can fix this to be way better
+                    if observing is None:
+                        observing = actionObject("determineVisits", [action_obj.player], targets = [target_inds[0]])
+                        observing.priority.append(action_obj.priority)
+                        self.action_queue.append(observing)
+                    else:
+                        for remaining_action in self.action_queue: # *** this needs thorough testing
+                            if  remaining_action.action == "determineVisits":
+                                remaining_action.priority.append(action_obj.priority)
+                                remaining_action.player.append(action_obj.player)
+                                remaining_action.targets.append(target_inds[0])
+                                break
                 case 'determineVisits':
                     self.determineVisits(action_obj)
                 case 'wiretapping':
@@ -949,6 +969,7 @@ class game:
         # *** TO-DO here:
         #       -add indeterminancy info
         #       -add BG/Arso interaction
+        #       -add BG/Mafioso interaction
         #       -add vest/shield/jail functionality
         if (self.atks_dict): # *** need to 
             # *** debug code
@@ -972,8 +993,8 @@ class game:
                                     defense_obj = self.defenses_dict[player_num].getAction()
                                     attack_obj = self.atks_dict[player_num].getAction()
 
-                                    self.updateKillDicts(defense_obj.player.player_num, actionObject("sacrificing", 0, defense_obj.player), self.atks_dict)
-                                    self.updateKillDicts(attack_obj.player.player_num, actionObject("counterattacking", 0, defense_obj.player), self.atks_dict)
+                                    self.updateKillDicts(defense_obj.player.player_num, actionObject("sacrificing", player = defense_obj.player), self.atks_dict)
+                                    self.updateKillDicts(attack_obj.player.player_num, actionObject("counterattacking", player = defense_obj.player), self.atks_dict)
 
                                     self.getTargetPlayer(defense_obj.targets[0]).notifications.append("You were protected by a Bodyguard!")
 
@@ -991,14 +1012,13 @@ class game:
                                 for visitor in self.players[player_num].visitors:
                                     for maul in self.atks_dict[player_num].actions["mauling"]:
                                         if visitor != maul.player:
-                                            # *** I should update actionObject to only require the word, I can have the init handle the priority and targeted traits
-                                            self.updateKillDicts(visitor.player_num, actionObject("mauling_visitor", action_dict["mauling"]["priority"], 0, maul.player, [visitor]), self.atks_dict)
-
+                                            self.updateKillDicts(visitor.player_num, actionObject("mauling_visitor", maul.player, [visitor]), self.atks_dict)
+                                            # *** "You attacked someone!"" should go here?
             # *** I think the inner loops can be written as a function for both bg and the general case, and will add stuff for bg?
             attacked_players_list = [player_num for player_num in self.atks_dict] 
             for player_num in attacked_players_list:
                 atk_state = self.atks_dict[player_num].determineState(from_start = 1)
-                print(atk_state)
+                
                 if player_num in self.defenses_dict:
                     defense_state = self.defenses_dict[player_num].determineState(from_start = 1, skip_bg = 1)
                 else:
@@ -1009,31 +1029,38 @@ class game:
                         defense_obj = self.defenses_dict[player_num].getAction()
                         attack_obj = self.atks_dict[player_num].getAction()
 
-                        # *** Update to distinguish between cases
-                        self.players[player_num].notifications.append("Someone tried to attack you, but you were saved!")
-                        self.players[defense_obj.player.player_num].notifications.append("Someone tried to attack [TARGET] but you saved them!")
-                        self.players[attack_obj.player.player_num].notifications.append("Your attack failed!")
-
-                        self.defenses_dict[player_num].actions[defense_state].pop(0)
-
-                        if (not self.defenses_dict[player_num].actions[defense_state]): # exhausted actions in this atk state, list empty
-                            del self.defenses_dict[player_num].actions[defense_state]
-                            defense_state = self.defenses_dict[player_num].determineState(from_start = 1, skip_bg = 1)
+                        self.resolveAtkDefense(attack_obj, defense_obj, player_num)
 
                     else:
                         attack_obj = self.atks_dict[player_num].getAction()
+                        attacked_player = self.players[player_num]
+                        # cases:
+                        # Night Immunity, vesting, shields
+                        if getattr(attacked_player, "vesting", 0) and (atk_flags[attack_obj.action] & 0b010):
+                            attacked_player.notifications.append("Someone tried to attack you but you were protected by your vest!")
+                            self.players[attack_obj.player.player_num].notifications.append("Your attack failed!")
+                        elif attacked_player.night_immune and (atk_flags[attack_obj.action] & 0b010):
+                            attacked_player.notifications.append("Someone tried to attack you but you were protected by you are immune!")
+                            self.players[attack_obj.player.player_num].notifications.append("Your attack failed!")
+                        elif (attacked_player.perpetuated.get("shield", 0) and not 
+                            (role_class_dict[attacked_player.role_name]["faction"] == faction_dict["NE"] and (atk_flags[attack_obj.action] & 0b1))):
+                            attacked_player.notifications.append("Someone tried to attack you but they broke your shield instead!")
+                            attacked_player.perpetuated["shield"] = 0
+                            if attack_obj.action != "mauling": # mauling should be the only attack that gets to here and doesn't get "Your attack failed!" but needs testing
+                                self.players[attack_obj.player.player_num].notifications.append("Your attack failed!") 
+                        
+                        else:
+                            # *** TO-DO: Technically need to make this optional
+                            if attack_obj.action == "stabbing":
+                                self.players[player_num].cleaned = 1
+                            self.killPlayer(player_num, attack_obj)
 
-                        # *** TO-DO: Technically need to make this optional
-                        if attack_obj.action == "stabbing":
-                            self.players[player_num].cleaned = 1
-                        self.killPlayer(player_num, attack_obj)
-
-                        # *** needs all the logic surrounding disguises and cleans. Also need to figure out announcement order.
-                        if(self.players[player_num].role_name == "Retributionist"):
-                            if self.players[player_num].actions:
-                                rev_player_num = self.players[player_num].actions[0].targets[0]
-                                self.players[rev_player_num].perpetuated["living_status"] = 1
-                                self.narrator_announcements.append(self.players[rev_player_num].player_name + " WAS REVIVED BY THE RETRIBUTIONIST!")
+                            # *** needs all the logic surrounding disguises and cleans. Also need to figure out announcement order.
+                            if(self.players[player_num].role_name == "Retributionist"):
+                                if self.players[player_num].actions:
+                                    rev_player_num = self.players[player_num].actions[0].targets[0]
+                                    self.players[rev_player_num].perpetuated["living_status"] = 1
+                                    self.narrator_announcements.append(self.players[rev_player_num].player_name + " WAS REVIVED BY THE RETRIBUTIONIST!")
                         
                         if (attack_obj.action == "mauling") | (attack_obj.action == "mauling_visitor") | (attack_obj.action == "alerting"):
                             # *** can be made better I think
@@ -1052,11 +1079,23 @@ class game:
             #    print(player_num)
             #    for atk_type in self.atks_dict[player_num].actions:
             #        print(atk_type)  
+    def resolveAtkDefense(self, attack_obj, defense_obj, player_num):
+        # *** Update to distinguish between cases
+        self.players[player_num].notifications.append("Someone tried to attack you, but you were saved!")
+        self.players[defense_obj.player.player_num].notifications.append("Someone tried to attack [TARGET] but you saved them!")
+        self.players[attack_obj.player.player_num].notifications.append("Your attack failed!")
+
+        self.defenses_dict[player_num].actions[defense_state].pop(0)
+
+        if (not self.defenses_dict[player_num].actions[defense_state]): # exhausted actions in this atk state, list empty
+            del self.defenses_dict[player_num].actions[defense_state]
+            defense_state = self.defenses_dict[player_num].determineState(from_start = 1, skip_bg = 1)
+
 
     def processVisit(self, target_inds, action_obj):
         # *** Trap and hallow still need to be integrated into f'n to process transports and cancels
         for i in range(len(target_inds)):
-            self.getTargetPlayer(target_inds[i]).visitors.append(action_obj.player)
+            self.getTargetPlayerAbs(target_inds[i]).visitors.append(action_obj.player)
         
         for target in action_obj.targets:
             if getattr(self.players[target], "alerting", 0): # *** this needs to be tested
@@ -1075,7 +1114,7 @@ class game:
                             if(action_obj.player.player_num in trapper.perpetuated["traps_landed"]):
                                 trapper.perpetuated["traps_landed"].remove(action_obj.player.player_num)
                                 trapper.perpetuated["num_traps"] = 1
-                                self.updateKillDicts(action_obj.player.player_num, actionObject("trapping_atk",4, 0, trapper, action_obj.player.player_num), self.atks_dict)
+                                self.updateKillDicts(action_obj.player.player_num, actionObject("trapping_atk", trapper, action_obj.player.player_num), self.atks_dict)
                                 trapper.notifications.append("Your trap on " + target.player_name + " attacked someone!") # *** need to sort out, probably
                                     # *** Need to cancel action (not implemented properly) # idk if this is still true
                                 action_obj.cancelled = 1
@@ -1193,7 +1232,7 @@ class game:
                     queue_here = queue_ind + 1
 
         if resolution_exists == 0:
-            self.action_queue.insert(queue_here, actionObject("resolve_" + action_obj.action, action_obj.priority, 0, [action_obj]))
+            self.action_queue.insert(queue_here, actionObject("resolve_" + action_obj.action, [action_obj]))
             resolution_exists = 1
 
         return resolution_exists # should always be 1, but better not to hard code it I suppose
@@ -1207,6 +1246,7 @@ class game:
 
     def resolveBlackmails(self, action_obj):
         new_blackmails = []
+        #if self.getTargetPlayer(bm_target).perpetuated["blackmail_immune"] == 1 or self.getTargetPlayer(bm_target).perpetuated["blackmail_immune"] == -1:
         for bm_target in action_obj.targets:
             if self.getTargetPlayer(bm_target).perpetuated["blackmail_immune"] == 1:
                 self.getTargetPlayer(bm_target).notifications.append("Someone tried to blackmail you, but you were blackmailed the previous night!") # *** Check phrasing
@@ -1567,7 +1607,7 @@ class game:
         for player in self.players:
             if "active_disguise" in player.perpetuated:
                 if(player.perpetuated["active_disguise"][0] >= 0):
-                    old_disguises.append(actionObject("disguising", 0, 1, player, player.perpetuated["active_disguise"]))
+                    old_disguises.append(actionObject("disguising", player, player.perpetuated["active_disguise"]))
         eval_obj = evalObject(old_disguises, len(self.players))
 
         node_list = self.buildNodeList(eval_obj)
@@ -1661,11 +1701,12 @@ class defenseResObject(killResObject):
         return self.actions[defense_state][0]
 
 class actionObject:
-    def __init__(self, action, priority, targeted, player = None,  targets = None):
+    def __init__(self, action, player = None,  targets = None):
         self.action = action
         self.player = player
-        self.priority = priority
-        self.targeted = targeted
+        # *** I may want to allow custom priorities, tbd
+        self.priority = action_dict[action]["priority"]
+        self.targeted = action_dict[action]["targeted"]
         self.targets = targets
         self.is_visit = action_dict[self.action]["is_visit"]
         self.cancelled = 0
@@ -1710,11 +1751,13 @@ class player:
         # non-perpetuated class variables for evaluating night actions
         self.actions = []
         #self.attackers = []
+        self.blackmailed = 0
         self.blocked = 0 
         self.controlled = 0
         self.hallowed = 0
         self.immunities = []
         self.jailed = 0
+        self.night_immunity = 0
         self.player_num = player_num # *** I might want to use player_num instead of passing players/names in a lot of places
         #self.protectors = []
         self.role_name = role_name
@@ -1726,6 +1769,7 @@ class player:
 
         # role-dependent variables
         self.faction = faction_dict[role_class_dict[role_name]["faction"]]
+        self.night_immune = role_class_dict[role_name].get("night_immune", 0)
         self.action_keywords = [] 
         self.max_actions = 0
         self.max_targets = []
@@ -1738,9 +1782,10 @@ class player:
                 "appearance" : int(perpetuated_element.find("appearance").text),
                 "blackmail_immune" : int(perpetuated_element.find("blackmail_immune").text),
                 "cleaned" :  int(perpetuated_element.find("cleaned").text),
-                "doused_by" : self.readListFromXML(perpetuated_element.find("doused_by").text),
+                "doused_by" : self.readFromXML(perpetuated_element.find("doused_by").text, list),
                 "living_status" : int(perpetuated_element.find("living_status").text),
                 "potions" : int(perpetuated_element.find("potions").text)
+                #temp_immunities : 
             }
         else:
             self.perpetuated = {
@@ -1749,7 +1794,8 @@ class player:
                 "cleaned" : 0,
                 "doused_by" : [],
                 "living_status" : 1,
-                "potions" : 0
+                "potions" : 0,
+                "temp_immunities" : {}
             }
 
         if(self.perpetuated["potions"] > 0):
@@ -1773,6 +1819,8 @@ class player:
                 self.immunities.append(immunity) 
 
         match (role_name):
+            # *** I think add check for [] in role_class_dict["actions"] before case statement, so the default
+            # doesn't need to check against all these cases every time
             case 'Jailor':
                 if(self.perpetuated["cannot_execute"] | (self.perpetuated["executions"] < 1)):
                     self.addAction("jailing")
@@ -1833,8 +1881,8 @@ class player:
 
                 if(self.perpetuated["douses"]):
                     self.addAction("igniting",len(self.perpetuated["douses"]))
-                    if(night_num == 3):
-                        self.max_actions += 1
+                    #if(night_num == 3): # temporary or permanent removal for re-work
+                    self.max_actions += 1
             case 'Werewolf':
                 # *** needs to be variable by night
                 self.addAction("mauling",1)
@@ -1868,58 +1916,105 @@ class player:
     #   Pull data from the perpetuated_element if it exists, otherwise set to default from role_class_dict. 
     ##############################################################################################################################
         if(perpetuated_element):
-            for elem_ind, expected_elem in enumerate(role_class_dict[self.role_name]["perpetuated"]["item"]):
-                if(type(role_class_dict[self.role_name]["perpetuated"]["default"][elem_ind]) is int):
-                    self.perpetuated[expected_elem] = int(perpetuated_element.find(expected_elem).text)
-                elif(type(role_class_dict[self.role_name]["perpetuated"]["default"][elem_ind]) is list):
-                    self.perpetuated[expected_elem] = self.readListFromXML(perpetuated_element.find(expected_elem).text)
-                elif(type(role_class_dict[self.role_name]["perpetuated"]["default"][elem_ind]) is set):
-                    self.perpetuated[expected_elem] = self.readSetFromXML(perpetuated_element.find(expected_elem).text)
-                else:
-                    self.perpetuated[expected_elem] = perpetuated_element.find(expected_elem).text
+            for expected_elem, default_value in role_class_dict[self.role_name]["perpetuated"].items():
+                expected_type = type(default_value)
+                self.perpetuated[expected_elem] = self.readFromXML(perpetuated_element.find(expected_elem).text, expected_type)
+                #if(type(role_class_dict[self.role_name]["perpetuated"]["default"][elem_ind]) is int):
+                #    self.perpetuated[expected_elem] = int(perpetuated_element.find(expected_elem).text)
+                #elif(type(role_class_dict[self.role_name]["perpetuated"]["default"][elem_ind]) is list):
+                #    self.perpetuated[expected_elem] = self.readListFromXML(perpetuated_element.find(expected_elem).text)
+                #elif(type(role_class_dict[self.role_name]["perpetuated"]["default"][elem_ind]) is set):
+                #    self.perpetuated[expected_elem] = self.readSetFromXML(perpetuated_element.find(expected_elem).text)
+                #else:
+                #    self.perpetuated[expected_elem] = perpetuated_element.find(expected_elem).text
             
         else:
-            for elem_ind, expected_elem in enumerate(role_class_dict[self.role_name]["perpetuated"]["item"]):
-                self.perpetuated[expected_elem] = role_class_dict[self.role_name]["perpetuated"]["default"][elem_ind]   
+            for expected_elem, default_value in role_class_dict[self.role_name]["perpetuated"].items():
+                self.perpetuated[expected_elem] = default_value 
 
-    def readListFromXML(self, text):
+    def readFromXML(self, text, text_type):
         # takes XML data for a list stored as one string (i.e. "[entry1, entry2, entry3]") and re-constructs the list as string entries. 
         # Converts whole number entries to int type instead of string. 
-        out_list = []
+
         iter = 0
-        list_regex_pattern = r"(\A\[.+\])(,\s){0,1}"
-        int_regex_pattern = r"(\A-{0,1}[0-9]+)(,\s){0,1}"
-        string_regex_pattern = r"(\A[A-Za-z0-9]+)(,\s){0,1}"
-        if(re.match(r"\A\[.*\]\Z",text)): # check if text represents a list
-            text = re.sub(r"\A\[","",text) # remove starting and ending brackets from text (text is used to check if all entries are read)
-            text = re.sub(r"\]\Z","",text) 
+        list_regex = r"\A\[.+\](,\s){0,1}"
+        dict_regex = r"\A\{(.+:.+(,){0,1}(\s){0,1})+\}(,\s){0,1}"
+        dict_key_regex = r"\A(.+)\s{0,1}:\s{0,1}"
+        set_regex = r"\A\{.+\}(,\s){0,1}"
+        int_regex = r"(\A-{0,1}[0-9]+)(,\s){0,1}"
+        #string_regex = r"\A([A-Za-z0-9]+(\s){0,1})+(,\s){0,1}" # *** I think I'd need to account for quotation marks? Anyways I'm not using this currently
+
+        if text_type is int:
+            return int (text)
+        elif text_type is list:
+            output = [] 
+            structure_regex = [r"\A\[", r"\]\Z"]
+            #type_match_regex = r"\A\[.*\]\Z"
+        elif text_type is set or text_type is dict:
+            if text_type is dict:
+                output = {}
+            else:
+                output = set()
+                if re.match(r"\Aset\(\)\Z",text): # empty sets looks like this ig
+                    return output
+            structure_regex = [r"\A\{", r"\}\Z"]
+        else:
+            sys.exit("Error in readFromXML, text_type provided is not valid: " + str(text_type))
+            #type_match_regex = r"\A\{.*\}\Z"
+        #else:
+        #    return text
+
+        if(re.match(structure_regex[0] + r".*" + structure_regex[1], text)): # check if text represents the provided type structure
+            text = re.sub(structure_regex[0],"",text) # remove starting and ending brackets from text (text is used to check if all entries are read)
+            text = re.sub(structure_regex[1],"",text) 
 
             # iterate while text still has characters
             while(text): 
+                if text_type is dict:
+                    key = re.search(dict_key_regex, text).group(1)
+                    text = re.sub(dict_key_regex,"",text)
                 # check if text matches the pattern for a nested list, an int, or default to string
-                if(re.match(list_regex_pattern, text)):
-                    search_pattern = list_regex_pattern
-                    entry = self.readListFromXML(re.search(list_regex_pattern, text).group(1)) # recursive f'n call for nested lists
-                elif(re.match(int_regex_pattern, text)):
-                    search_pattern = int_regex_pattern
+                if (re.match(int_regex, text)):
+                    search_pattern = int_regex
                     entry = int (re.search(search_pattern,text).group(1))
-                    
-                else:
-                    search_pattern = string_regex_pattern
-                    entry = re.search(search_pattern,text).group(1)
 
-                out_list.append(entry)
+                #elif(re.match(string_regex, text)):
+                #    search_pattern = string_regex
+                #    entry = re.search(search_pattern,text).group(1)
+
+                elif (re.match(list_regex, text)):
+                    search_pattern = list_regex
+                    entry = self.readFromXML(re.search(list_regex, text).group(1), list) # recursive f'n call for nested lists
+
+                elif (re.match(dict_regex, text)):
+                    search_pattern = list_regex
+                    entry = self.readFromXML(re.search(dict_regex, text).group(1), dict) # recursive f'n call for nested dicts
+
+                elif (re.match(set_regex, text)):
+                    search_pattern = set_regex
+                    entry = self.readFromXML(re.search(set_regex, text).group(1), set) # recursive f'n call for nested sets
+
+                else:
+                    sys.exit("Error in readFromXML, data does not match any expected type: " + str(text))
+
+                if(text_type is list):
+                    output.append(entry)
+                elif text_type is dict:
+                    output[key] = entry
+                elif text_type is set:
+                    output.add(entry)
+
                 text = re.sub(search_pattern,"",text) # removal of pattern from text to meet while loop condition
 
                 # track iterations and break on 100 as a safety measure against getting stuck in this loop
                 iter = iter + 1
                 if(iter >= 100):
-                    sys.exit("Error in readListFromXML, can't exit while loop")
+                    sys.exit("Error in readFromXML, can't exit while loop")
 
         else:
-            sys.exit("Non-list passed to readListFromXML: " + text)
+            sys.exit("Text does not match type structure passed to readFromXML: " + text +  ", " + str(text_type)) # *** idk if this works lol
         
-        return out_list
+        return output
 
     def readSetFromXML(self, text):
             # takes XML data for a list stored as one string (i.e. "[entry1, entry2, entry3]") and re-constructs the list as string entries. 
@@ -1936,7 +2031,6 @@ class player:
                 text = re.sub(r"\}\Z","",text) 
     
                 # iterate while text still has characters
-                print(text)
                 while(text): 
                     # check if text matches the pattern for a nested list, an int, or default to string
                     if(re.match(list_regex_pattern, text)):
