@@ -153,10 +153,6 @@ action_dict = {
                      "targeted" : 1,
                      "hallow_cancels" : 1
     },
-    'resolve_blackmailing' : {"priority" : 17.5,
-                     "is_visit" : 0,
-                     "targeted" : 0
-    },
     "investigating" : {"priority" : 18,
                      "is_visit" : 1,
                      "max_targets" : 1,
@@ -877,18 +873,6 @@ class game:
                 case 'resolve_disguising':
                     self.resolveDisguises(action_obj)
                 case 'blackmailing':
-                    self.queueResolution(action_obj)
-                    #self.resolveBlackmails(action_obj)
-                    #for remaining_action in self.action_queue: # *** this needs thorough testing
-                    #    if  remaining_action.action[0] == "resolveBlackmails":
-                    #        remaining_action.player.append(action_obj.player)
-                    #        remaining_action.targets.append(target_inds[0])
-                    #        blackmailing = 1
-                    #        break
-
-                    #if blackmailing == 0:
-                    #    self.action_queue.append(actionObject("resolveBlackmails", [action_obj.player], targets = [target_inds[0]]))
-                case 'resolve_blackmailing': 
                     self.resolveBlackmails(action_obj)
                 case 'cleaning':
                     # *** need to evaluate if all uses of getTargetPlayer are correct or if abs is needed
@@ -1101,7 +1085,10 @@ class game:
     def processVisit(self, target_inds, action_obj):
         # *** Trap and hallow still need to be integrated into f'n to process transports and cancels
         for i in range(len(target_inds)):
-            self.getTargetPlayerAbs(target_inds[i]).visitors.append(action_obj.player)
+            # *** why did I use Abs here initially? Investigate
+            # Abs is used because we already did the relative reference when setting target_inds. However, we really should just 
+            # remove target_inds entirely and write over action_obj.targets with the appropriate player
+            self.getTargetPlayerAbs(target_inds[i]).visitors.append(action_obj.player) 
         
         for target in action_obj.targets:
             if getattr(self.players[target], "alerting", 0): # *** this needs to be tested
@@ -1268,24 +1255,28 @@ class game:
                 remaining_action.cancelled = 1
 
     def resolveBlackmails(self, action_obj):
-        new_blackmails = []
-        #if self.getTargetPlayer(bm_target).perpetuated["blackmail_immune"] == 1 or self.getTargetPlayer(bm_target).perpetuated["blackmail_immune"] == -1:
-        for bm_target in action_obj.targets:
-            if self.getTargetPlayer(bm_target[0]).perpetuated["blackmail_immune"] == 1:
-                self.getTargetPlayer(bm_target[0]).notifications.append("Someone tried to blackmail you, but you were blackmailed the previous night!") # *** Check phrasing
-                # *** don't know if technically you regain blackmail immunity when someone tries and fails or not
-            else:
-                self.getTargetPlayer(bm_target[0]).notifications.append(
-                "You were blackmailed!\n\n" \
-                "You cannot speak, except for saying, 'I am blackmailed,' exactly once.\n" \
-                "You may not vote, you may only abstain, but you cannot use your abstain to communicate information.")
+        target = self.getTargetPlayer(action_obj.targets[0])
+        if "blackmailing" in target.active_temp_immunities:
+            target.notifications.append("Someone tried to blackmail you but you were blackmailed the previous night!")
 
-                new_blackmails.append(self.getTargetPlayer(bm_target[0]))
-        for player in self.players: # *** this needs to be tested once multiple nights are supported
-            player.perpetuated["blackmail_immune"] = 0 # remove all the blackmail immunities from previous night
-        
-        for new_bm in new_blackmails:
-            new_bm.perpetuated["blackmail_immune"] = 1 # assign blackmail immunities to targets affected on current night
+        else:
+            noti_string = ("You were blackmailed!\n\n" 
+                        "You cannot speak, except for saying 'I am blackmailed' exactly once.\n"
+                        "You may vote one time, but you cannot use your vote to communicate information beyond wanting to vote for that person.\n\n")
+
+            # *** this needs to be made optional maybe (leaving for later)
+            if(target.faction >= faction_dict["non-Town"]):
+                noti_string = noti_string + "Someone tried to blind you, but you are unaffected!"
+            else:
+                noti_string = noti_string + "You were also blinded! You did not receive any non-essential night notifications." 
+
+            target.notifications.append(noti_string)
+
+            target.perpetuated["gained_temp_immunities"].add("blackmailing")
+                            # Old BMer notification
+                            #"You were blackmailed!\n\n" \
+                            #"You cannot speak, except for saying, 'I am blackmailed,' exactly once.\n" \
+                            #"You may not vote, you may only abstain, but you cannot use your abstain to communicate information.")
 
     def determineAvailableWiretaps(self, GF_ind):
         num_mafia_living = 1
@@ -1803,22 +1794,22 @@ class player:
         if(perpetuated_element):
             self.perpetuated = {
                 "appearance" : int(perpetuated_element.find("appearance").text),
-                "blackmail_immune" : int(perpetuated_element.find("blackmail_immune").text),
                 "cleaned" :  int(perpetuated_element.find("cleaned").text),
                 "doused_by" : self.readFromXML(perpetuated_element.find("doused_by").text, list),
                 "living_status" : int(perpetuated_element.find("living_status").text),
-                "potions" : int(perpetuated_element.find("potions").text)
-                #temp_immunities : 
+                "potions" : int(perpetuated_element.find("potions").text),
+                "gained_temp_immunities" : set()
             }
+            self.active_temp_immunities = self.readFromXML(perpetuated_element.find("gained_temp_immunities").text, set)
+            
         else:
             self.perpetuated = {
                 "appearance" : self.player_num,
-                "blackmail_immune" : 0,
                 "cleaned" : 0,
                 "doused_by" : [],
                 "living_status" : 1,
                 "potions" : 0,
-                "temp_immunities" : {}
+                "gained_temp_immunities" : set()
             }
 
         if(self.perpetuated["potions"] > 0):
@@ -1969,10 +1960,12 @@ class player:
         dict_key_regex = r"\A(.+)\s{0,1}:\s{0,1}"
         set_regex = r"\A\{.+\}(,\s){0,1}"
         int_regex = r"(\A-{0,1}[0-9]+)(,\s){0,1}"
-        #string_regex = r"\A([A-Za-z0-9]+(\s){0,1})+(,\s){0,1}" # *** I think I'd need to account for quotation marks? Anyways I'm not using this currently
+        string_regex = r"\A\'([A-Za-z0-9]+(\s){0,1})+\'(,\s){0,1}" # *** I think I'd need to account for quotation marks? Anyways I'm not using this currently
 
         if text_type is int:
             return int (text)
+        elif text_type is str:
+            return re.match(string_regex, text).group(1) # *** might be better/more robust ways to do this
         elif text_type is list:
             output = [] 
             structure_regex = [r"\A\[", r"\]\Z"]
@@ -2005,9 +1998,9 @@ class player:
                     search_pattern = int_regex
                     entry = int (re.search(search_pattern,text).group(1))
 
-                #elif(re.match(string_regex, text)):
-                #    search_pattern = string_regex
-                #    entry = re.search(search_pattern,text).group(1)
+                elif(re.match(string_regex, text)):
+                    search_pattern = string_regex
+                    entry = re.search(search_pattern,text).group(1)
 
                 elif (re.match(list_regex, text)):
                     search_pattern = list_regex
