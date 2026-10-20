@@ -825,7 +825,7 @@ class game:
                     # idk why I had this at all
                     #if action_obj.player.role != "Necromancer":
                     #    action_obj.player.perpetuated["vests"] -= 1
-                    if action_obj.player.role != "Veteran":
+                    if action_obj.player.role_name == "Veteran":
                         action_obj.player.perpetuated["alerts"] -= 1
                 case 'killing': # *** both killing and shooting need work if restructuring attacks
                     self.updateKillDicts(target_inds[0], action_obj, self.atks_dict)
@@ -1895,6 +1895,10 @@ class player:
             # ***Exe
             #case 'Executioner':
                 #if(self.perpetuated["target"] is None): # Night 1, assign target
+            case 'Jester':
+                if night_num == 1:
+                    self.addAction("vesting")
+                    self.max_actions += 1
             case _:
                 for static_action in role_class_dict[self.role_name]["actions"]:
                     self.addAction(static_action)
