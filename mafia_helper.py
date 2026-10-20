@@ -153,9 +153,9 @@ action_dict = {
                      "targeted" : 1,
                      "hallow_cancels" : 1
     },
-    'resolveBlackmails' : {"priority" : 17.5,
+    'resolve_blackmailing' : {"priority" : 17.5,
                      "is_visit" : 0,
-                     "targeted" : 1
+                     "targeted" : 0
     },
     "investigating" : {"priority" : 18,
                      "is_visit" : 1,
@@ -236,6 +236,10 @@ action_dict = {
                      "targeted" : 1,
                      "hallow_cancels" : 1
     },
+    "resolve_observing" : {"priority" : 31.5,
+                         "is_visit" : 0,
+                         "targeted" : 0
+        },
     "determineVisits" : {"priority" : [],
                      "is_visit" : 0,
                      "targeted" : 0
@@ -725,6 +729,7 @@ class game:
         #    self.action_queue.append(actionObject('determineAppearances', action_dict['disguising']['priority'] + .1, 0))
         
         # *** This is a temp fix and resolution stuff needs to be cleaned up
+        self.resolution_dict = {}
         observing = None
         blackmailing = 0 # *** fix to match?
 
@@ -872,17 +877,18 @@ class game:
                 case 'resolve_disguising':
                     self.resolveDisguises(action_obj)
                 case 'blackmailing':
-                    self.resolveBlackmails(action_obj)
-                    for remaining_action in self.action_queue: # *** this needs thorough testing
-                        if  remaining_action.action[0] == "resolveBlackmails":
-                            remaining_action.player.append(action_obj.player)
-                            remaining_action.targets.append(target_inds[0])
-                            blackmailing = 1
-                            break
+                    self.queueResolution(action_obj)
+                    #self.resolveBlackmails(action_obj)
+                    #for remaining_action in self.action_queue: # *** this needs thorough testing
+                    #    if  remaining_action.action[0] == "resolveBlackmails":
+                    #        remaining_action.player.append(action_obj.player)
+                    #        remaining_action.targets.append(target_inds[0])
+                    #        blackmailing = 1
+                    #        break
 
-                    if blackmailing == 0:
-                        self.action_queue.append(actionObject("resolveBlackmails", [action_obj.player], targets = [target_inds[0]]))
-                case 'resolveBlackmails': 
+                    #if blackmailing == 0:
+                    #    self.action_queue.append(actionObject("resolveBlackmails", [action_obj.player], targets = [target_inds[0]]))
+                case 'resolve_blackmailing': 
                     self.resolveBlackmails(action_obj)
                 case 'cleaning':
                     # *** need to evaluate if all uses of getTargetPlayer are correct or if abs is needed
@@ -1214,6 +1220,23 @@ class game:
             notifications_file.write(indet + "\n")
 
     ## Helper Functions for Game Class
+    def queueResolution(self, action_obj):
+        if action_obj.action in self.resolution_dict:
+            self.resolution_dict[action_obj.action].player.append(action_obj.player)
+            self.resolution_dict[action_obj.action].targets.append(action_obj.targets)
+
+        else:
+            queue_len = len(self.action_queue)
+            if queue_len > 1:
+                for queue_ind, remaining_action in enumerate(self.action_queue[1:]):
+                    if remaining_action.priority > action_dict["resolve_" + action_obj.action]["priority"]:
+                        break
+            
+            if (re.match(r"tracking|watching|stalking", action_obj.action)): # separate thing for these is kinda gross but idc
+                self.action_queue.insert(queue_ind + 1, actionObject("resolve_observing" + action_obj.action, [action_obj.player], [action_obj.targets]))
+            else:
+                self.action_queue.insert(queue_ind + 1, actionObject("resolve_" + action_obj.action, [action_obj.player], [action_obj.targets]))
+
     # *** the resolution_exists thing is weird
     def findResolutionObj(self, action_obj, target_inds, resolution_exists = 0): # *** need to go back and use this for BM and such. plus target_inds usage change
         action_obj.targets = target_inds # here we do overwrite the actual target text with the target index, but this action is 
@@ -1248,16 +1271,16 @@ class game:
         new_blackmails = []
         #if self.getTargetPlayer(bm_target).perpetuated["blackmail_immune"] == 1 or self.getTargetPlayer(bm_target).perpetuated["blackmail_immune"] == -1:
         for bm_target in action_obj.targets:
-            if self.getTargetPlayer(bm_target).perpetuated["blackmail_immune"] == 1:
-                self.getTargetPlayer(bm_target).notifications.append("Someone tried to blackmail you, but you were blackmailed the previous night!") # *** Check phrasing
+            if self.getTargetPlayer(bm_target[0]).perpetuated["blackmail_immune"] == 1:
+                self.getTargetPlayer(bm_target[0]).notifications.append("Someone tried to blackmail you, but you were blackmailed the previous night!") # *** Check phrasing
                 # *** don't know if technically you regain blackmail immunity when someone tries and fails or not
             else:
-                self.getTargetPlayer(bm_target).notifications.append(
+                self.getTargetPlayer(bm_target[0]).notifications.append(
                 "You were blackmailed!\n\n" \
                 "You cannot speak, except for saying, 'I am blackmailed,' exactly once.\n" \
                 "You may not vote, you may only abstain, but you cannot use your abstain to communicate information.")
 
-                new_blackmails.append(self.getTargetPlayer(bm_target))
+                new_blackmails.append(self.getTargetPlayer(bm_target[0]))
         for player in self.players: # *** this needs to be tested once multiple nights are supported
             player.perpetuated["blackmail_immune"] = 0 # remove all the blackmail immunities from previous night
         
