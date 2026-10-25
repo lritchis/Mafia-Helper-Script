@@ -612,7 +612,13 @@ class game:
             if (role_class_dict[role_name]["faction"] == "Town"):
                 self.num_town += 1
 
-            self.players.append(player(player_name, player_num, role_name, self.night_num, perpetuated_element))
+            match (role_name):
+                case "Shapeshifter":
+                    player_obj = craigClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
+                case _:
+                    player_obj = player(player_name, player_num, role_name, self.night_num, perpetuated_element)
+                    
+            self.players.append(player_obj)
             self.categories.append(roleSlot(slot_name, role_name))
 
         if(num_living > int(len(self.players) / 2)):
@@ -746,216 +752,220 @@ class game:
             action_obj = self.action_queue[0]
             target_inds = []
 
-            if action_obj.targeted: 
-                if action_obj.is_visit:
-                    for i in range(len(action_obj.targets)): # *** I think I can just get rid of target_inds...
-                        action_obj.targets[i] = self.getTargetPlayer(action_obj.targets[i])
-                    self.processVisit(action_obj)
-                # *** else statement might go here to do targeted non-visits. Right now that would hurt some Arso functionality so I'll decided later
-   
-            # *** need to implement immunities               
-            match (action_obj.action):
-                # *** one line actions resolved here, more complex ones resolved in standalone f'ns
-                #case 'haunting':
-                    # *** Temp, can let it randomly determine a Townie to kill (or maybe allow both?)
-                    #self.killPlayer(target_inds[0],action_obj.action)
-                case 'reviving':
-                    target = self.getTargetPlayerAbs(action_obj.targets[0])
-                    if target.perpetuated['living_status'] == 1:
-                        sys.exit("Error, Retributionist cannot revive a living player. (" + 
-                                    action_obj.player.player_name + " reviving " + target.player_name + ")")
-                case 'jailing': 
-                    action_obj.targets[0].jailed = 1
-                    # sets cannot_execute from 1 to 0 for the next night. Code has already verified against an illegal execution
-                    # by not adding "executing" to Jailor's action keywords when initialized
-                    action_obj.player.cannot_execute = 0 
-                case 'alerting':
-                    action_obj.player.alerting = 1
-                    if action_obj.player.role != "Necromancer":
-                        action_obj.player.perpetuated["alerts"] -= 1
-                case 'transporting':
-                    # *** Wording needs checked, also untested
-                    if action_obj.targets[0].jailed == 1:
-                        action_obj.player.notifications.append("Your transport failed!")
-                        action_obj.targets[0].notifications.append("Someone tried to transport you, but you were in jail!")
-                    elif action_obj.targets[1].jailed == 1:
-                        action_obj.player.notifications.append("Your transport failed!")
-                        action_obj.targets[1].notifications.append("Someone tried to transport you, but you were in jail!")
-                    else:
-                        transporting = self.findResolutionObj(action_obj)
-                    #self.players[target_inds[0]].transported.append(self.players[target_inds[1]])
-                    #self.players[target_inds[1]].transported.append(self.players[target_inds[0]])
-                case 'resolve_transporting':
-                    cancel_list = []
-                    for remaining_action in self.action_queue:
-                        if(remaining_action.cancelled == 0):
-                            if (remaining_action.action == "blocking") | (remaining_action.action == "controlling"):
-                                cancel_list.append(remaining_action)
-                            elif (remaining_action.priority > action_dict["blocking"]["priority"]):
-                                break     
-                    self.resolveTransports(cancel_list, action_obj)
-                case "controlling":
-                    # *** does not actually implement a control
-                    # *** need to check against immunities
-                    action_obj.targets[0].notifications.append("You were controlled!")
-                    result = action_obj.targets[0].role_name                
-                    if startsWVowel(result):
-                        result = "an " + result
-                    else:
-                        result = "a " + result
+            if ~(action_obj.cancelled):
+                if action_obj.targeted: 
+                    if action_obj.is_visit:
+                        action_obj.cancelled = self.processVisit(action_obj)
+                    # *** else statement might go here to do targeted non-visits. Right now that would hurt some Arso functionality so I'll decided later
+    
+                # *** need to implement immunities
+                if ~(action_obj.cancelled): # checking this again feels kinda gross but idk how to do that more cleanly 
+                    # resolve any role-specific resource tracking or limitations # *** could word this comment better later
+                    if(getattr(action_obj.player, "act", 0)): # *** I should check this sooner and have the resolve actions in their own space? idk
+                        action_obj.player.act(action_obj)
 
-                    action_obj.player.notifications.append("Your target is " + result + "!")
+                    match (action_obj.action):
+                        # *** one line actions resolved here, more complex ones resolved in standalone f'ns
+                        #case 'haunting':
+                            # *** Temp, can let it randomly determine a Townie to kill (or maybe allow both?)
+                            #self.killPlayer(target_inds[0],action_obj.action)
+                        case 'reviving':
+                            target = self.getTargetPlayerAbs(action_obj.targets[0])
+                            if target.perpetuated['living_status'] == 1:
+                                sys.exit("Error, Retributionist cannot revive a living player. (" + 
+                                            action_obj.player.player_name + " reviving " + target.player_name + ")")
+                        case 'jailing': 
+                            action_obj.targets[0].jailed = 1
+                            # sets cannot_execute from 1 to 0 for the next night. Code has already verified against an illegal execution
+                            # by not adding "executing" to Jailor's action keywords when initialized
+                            action_obj.player.cannot_execute = 0 
+                        case 'alerting':
+                            action_obj.player.alerting = 1
+                            if action_obj.player.role != "Necromancer":
+                                action_obj.player.perpetuated["alerts"] -= 1
+                        case 'transporting':
+                            # *** Wording needs checked, also untested
+                            if action_obj.targets[0].jailed == 1:
+                                action_obj.player.notifications.append("Your transport failed!")
+                                action_obj.targets[0].notifications.append("Someone tried to transport you, but you were in jail!")
+                            elif action_obj.targets[1].jailed == 1:
+                                action_obj.player.notifications.append("Your transport failed!")
+                                action_obj.targets[1].notifications.append("Someone tried to transport you, but you were in jail!")
+                            else:
+                                transporting = self.findResolutionObj(action_obj)
+                            #self.players[target_inds[0]].transported.append(self.players[target_inds[1]])
+                            #self.players[target_inds[1]].transported.append(self.players[target_inds[0]])
+                        case 'resolve_transporting':
+                            cancel_list = []
+                            for remaining_action in self.action_queue:
+                                if(remaining_action.cancelled == 0):
+                                    if (remaining_action.action == "blocking") | (remaining_action.action == "controlling"):
+                                        cancel_list.append(remaining_action)
+                                    elif (remaining_action.priority > action_dict["blocking"]["priority"]):
+                                        break     
+                            self.resolveTransports(cancel_list, action_obj)
+                        case "controlling":
+                            # *** does not actually implement a control
+                            # *** need to check against immunities
+                            action_obj.targets[0].notifications.append("You were controlled!")
+                            result = action_obj.targets[0].role_name                
+                            if startsWVowel(result):
+                                result = "an " + result
+                            else:
+                                result = "a " + result
 
-                case "trapping":
-                    for target in action_obj.targets:
-                        target.trappers_targeting.append(action_obj.player)
-                    print("***Needs implemented")
-                case "hallowing":
-                    # *** this actually needs to be wrapped up in the blocking/controlling resolution, but it's fine for now
-                    if action_obj.targets[0] == action_obj.player:
-                        if action_obj.player.perpetuated["self-hallow"]:
-                            action_obj.player.perpetuated["self-hallow"] = 0
-                        else:
-                            sys.exit("Error, indicated self-hallow when unavailable.")
-                    action_obj.targets[0].hallowed = 1
-                case 'delivering to':
-                    print("***Still needs implemented, dingus!")
-                case 'protecting':
-                    self.updateKillDicts(action_obj, self.defenses_dict)
-                case 'saving':
-                    self.updateKillDicts(action_obj, self.defenses_dict)
-                case 'vesting': 
-                    action_obj.player.vesting = 1
-                    #self.updateKillDicts(action_obj.player.player_num, action_obj, self.defenses_dict)
+                            action_obj.player.notifications.append("Your target is " + result + "!")
 
-                    # idk why I had this at all
-                    #if action_obj.player.role != "Necromancer":
-                    #    action_obj.player.perpetuated["vests"] -= 1
-                    if action_obj.player.role_name == "Veteran":
-                        action_obj.player.perpetuated["alerts"] -= 1
-                case 'killing': # *** both killing and shooting need work if restructuring attacks
-                    self.updateKillDicts(action_obj, self.atks_dict)
-                case 'shooting':
-                    self.updateKillDicts(action_obj, self.atks_dict)
-                    action_obj.player.perpetuated['shots'] -= 1
-                case 'stabbing':
-                    self.updateKillDicts(action_obj, self.atks_dict)
-                case 'mauling':
-                    self.updateKillDicts(action_obj, self.atks_dict)
-                case 'blocking':
-                    self.resolveBlock(action_obj.targets[0])
-                case 'disguising':
-                    # *** need to determine if a new disguise is disrupting non-detereminant old diguises
-                    disguising = self.findResolutionObj(action_obj)
-                    # (don't want call to determineAppearances to shuffle non-determinant chains that haven't changed)
-                    #print(action_obj.player.perpetuated["active_disguise"])
-                    #if action_obj.player.perpetuated["active_disguise"][0] != -1: # *** why the frick is this turning into a string
-                    #    print(action_obj.player.perpetuated["active_disguise"][0])
-                    #    disg0 = action_obj.player.perpetuated["active_disguise"][0]
-                    #    disg1 = action_obj.player.perpetuated["active_disguise"][1]
+                        case "trapping":
+                            for target in action_obj.targets:
+                                target.trappers_targeting.append(action_obj.player)
+                            print("***Needs implemented")
+                        case "hallowing":
+                            # *** this actually needs to be wrapped up in the blocking/controlling resolution, but it's fine for now
+                            if action_obj.targets[0] == action_obj.player:
+                                if action_obj.player.perpetuated["self-hallow"]:
+                                    action_obj.player.perpetuated["self-hallow"] = 0
+                                else:
+                                    sys.exit("Error, indicated self-hallow when unavailable.")
+                            action_obj.targets[0].hallowed = 1
+                        case 'delivering to':
+                            print("***Still needs implemented, dingus!")
+                        case 'protecting':
+                            self.updateKillDicts(action_obj, self.defenses_dict)
+                        case 'saving':
+                            self.updateKillDicts(action_obj, self.defenses_dict)
+                        case 'vesting': 
+                            action_obj.player.vesting = 1
+                            #self.updateKillDicts(action_obj.player.player_num, action_obj, self.defenses_dict)
 
-                    #    self.players[disg0].perpetuated["disguises"].remove(disg1)
-                    #    self.players[disg1].perpetuated["disguises"].remove(disg0)
-                        #for disguise_ind, old_disguise in enumerate(action_obj.player.perpetuated["active_disguise"]): # should only do anything if there was an active disguise already
-                        #    if disguise_ind == 0: # probably a better way to do this, this is kinda gross
-                        #        old_ind = 1
-                        #    else:
-                        #        old_ind = 0
-                        #    self.players[old_disguise].perpetuated["disguises"].remove(old_ind)
-                    # *** need to implement functionality of being unable to kill your disguise target night-of. Probably introduct faction attributes
-                    #action_obj.player.perpetuated["active_disguise"] = [self.getTargetPlayer(target_inds[0]).player_num, self.getTargetPlayer(target_inds[1]).player_num]
-                    
-                    #self.getTargetPlayer(target_inds[0]).perpetuated["disguises"].append(self.getTargetPlayer(target_inds[1]).player_num)
-                    #self.getTargetPlayer(target_inds[1]).perpetuated["disguises"].append(self.getTargetPlayer(target_inds[0]).player_num)
+                            # idk why I had this at all
+                            #if action_obj.player.role != "Necromancer":
+                            #    action_obj.player.perpetuated["vests"] -= 1
+                            if action_obj.player.role_name == "Veteran":
+                                action_obj.player.perpetuated["alerts"] -= 1
+                        case 'killing': # *** both killing and shooting need work if restructuring attacks
+                            self.updateKillDicts(action_obj, self.atks_dict)
+                        case 'shooting':
+                            self.updateKillDicts(action_obj, self.atks_dict)
+                            action_obj.player.perpetuated['shots'] -= 1
+                        case 'stabbing':
+                            self.updateKillDicts(action_obj, self.atks_dict)
+                        case 'mauling':
+                            self.updateKillDicts(action_obj, self.atks_dict)
+                        case 'blocking':
+                            self.resolveBlock(action_obj.targets[0])
+                        case 'disguising':
+                            # *** need to determine if a new disguise is disrupting non-detereminant old diguises
+                            disguising = self.findResolutionObj(action_obj)
+                            # (don't want call to determineAppearances to shuffle non-determinant chains that haven't changed)
+                            #print(action_obj.player.perpetuated["active_disguise"])
+                            #if action_obj.player.perpetuated["active_disguise"][0] != -1: # *** why the frick is this turning into a string
+                            #    print(action_obj.player.perpetuated["active_disguise"][0])
+                            #    disg0 = action_obj.player.perpetuated["active_disguise"][0]
+                            #    disg1 = action_obj.player.perpetuated["active_disguise"][1]
 
-                    #if (len(self.action_queue) > 1):
-                    #    self.action_queue.insert(queue_ind + 1, actionObject('determineAppearance', action_dict["disguising"]["priority"] + .5, player = self.players[target_inds[0]]))
-                    #elif(self.action_queue[queue_ind + 1].action != "disguising"):
-                    #    self.action_queue.insert(queue_ind + 1, actionObject('determineAppearance', action_dict["disguising"]["priority"] + .5, player = self.players[target_inds[0]]))
-                        # *** idk I think there are probably a million better ways to do this
-                        # this basically needs to run on each set of nodes (not implemented yet)
-                case 'resolve_disguising':
-                    self.resolveDisguises(action_obj)
-                case 'blackmailing':
-                    self.resolveBlackmails(action_obj)
-                case 'cleaning':
-                    # *** need to evaluate if all uses of getTargetPlayer are correct or if abs is needed
-                    #*** I need to lower the number of cleans. But in reality I need to track resources separately from here somehow.
-                    action_obj.targets[0].perpetuated["cleaned"] = 1
-                case 'dousing':
+                            #    self.players[disg0].perpetuated["disguises"].remove(disg1)
+                            #    self.players[disg1].perpetuated["disguises"].remove(disg0)
+                                #for disguise_ind, old_disguise in enumerate(action_obj.player.perpetuated["active_disguise"]): # should only do anything if there was an active disguise already
+                                #    if disguise_ind == 0: # probably a better way to do this, this is kinda gross
+                                #        old_ind = 1
+                                #    else:
+                                #        old_ind = 0
+                                #    self.players[old_disguise].perpetuated["disguises"].remove(old_ind)
+                            # *** need to implement functionality of being unable to kill your disguise target night-of. Probably introduct faction attributes
+                            #action_obj.player.perpetuated["active_disguise"] = [self.getTargetPlayer(target_inds[0]).player_num, self.getTargetPlayer(target_inds[1]).player_num]
+                            
+                            #self.getTargetPlayer(target_inds[0]).perpetuated["disguises"].append(self.getTargetPlayer(target_inds[1]).player_num)
+                            #self.getTargetPlayer(target_inds[1]).perpetuated["disguises"].append(self.getTargetPlayer(target_inds[0]).player_num)
 
-                    action_obj.player.perpetuated["first_douse"] = 0 # no need to check if it's 1, just assign it to 0
+                            #if (len(self.action_queue) > 1):
+                            #    self.action_queue.insert(queue_ind + 1, actionObject('determineAppearance', action_dict["disguising"]["priority"] + .5, player = self.players[target_inds[0]]))
+                            #elif(self.action_queue[queue_ind + 1].action != "disguising"):
+                            #    self.action_queue.insert(queue_ind + 1, actionObject('determineAppearance', action_dict["disguising"]["priority"] + .5, player = self.players[target_inds[0]]))
+                                # *** idk I think there are probably a million better ways to do this
+                                # this basically needs to run on each set of nodes (not implemented yet)
+                        case 'resolve_disguising':
+                            self.resolveDisguises(action_obj)
+                        case 'blackmailing':
+                            self.resolveBlackmails(action_obj)
+                        case 'cleaning':
+                            # *** need to evaluate if all uses of getTargetPlayer are correct or if abs is needed
+                            #*** I need to lower the number of cleans. But in reality I need to track resources separately from here somehow.
+                            action_obj.targets[0].perpetuated["cleaned"] = 1
+                        case 'dousing':
 
-                    for target in action_obj.targets:
-                        target.perpetuated["doused_by"].append(action_obj.player.player_num) # *** still to do activations, plus removing if Arso dies
-                        action_obj.player.perpetuated["douses"].append(target.player_num)
-                case 'investigating':
-                    if action_obj.player.role_name == "Investigator":
-                        if(action_obj.targets[0].perpetuated["doused_by"]):
-                            result = investigator_categories_dict["Arsonist"]
-                        else:
-                            result = investigator_categories_dict[self.getPlayerAppearance(action_obj.targets[0],"role")]
+                            action_obj.player.perpetuated["first_douse"] = 0 # no need to check if it's 1, just assign it to 0
 
-                    else: #(action_obj.player.role_name == "Consigliere") | (action_obj.player.role_name == "Necromancer"):
-                        if(action_obj.targets[0].perpetuated["doused_by"]):
-                            result = "Arsonist"
-                        else:
-                            result = self.getPlayerAppearance(action_obj.targets[0],"role")
-                        
-                        if startsWVowel(result):
-                            result = "an " + result
-                        else:
-                            result = "a " + result
+                            for target in action_obj.targets:
+                                target.perpetuated["doused_by"].append(action_obj.player.player_num) # *** still to do activations, plus removing if Arso dies
+                                action_obj.player.perpetuated["douses"].append(target.player_num)
+                        case 'investigating':
+                            if action_obj.player.role_name == "Investigator":
+                                if(action_obj.targets[0].perpetuated["doused_by"]):
+                                    result = investigator_categories_dict["Arsonist"]
+                                else:
+                                    result = investigator_categories_dict[self.getPlayerAppearance(action_obj.targets[0],"role")]
 
-                    action_obj.player.notifications.append("Your target is " + result + "!")
-                case 'checking':
-                    result = ""
-                    for category in self.categories:
-                        if category.slot_name == action_obj.targets[0]:
-                            result = category.role_name
-                    if (result):
-                        action_obj.player.notifications.append(action_obj.targets[0] + " is " + result + "!")
-                    else:
-                        sys.exit(action_obj.targets[0] + " not found in role list for player: " + action_obj.player.player_name)
-                case 'watching' | 'tracking' | 'stalking':
-                    # *** I can fix this to be way better
-                    if observing is None:
-                        observing = actionObject("determineVisits", [action_obj.player], targets = [action_obj.targets[0]])
-                        observing.priority.append(action_obj.priority)
-                        self.action_queue.append(observing)
-                    else:
-                        for remaining_action in self.action_queue: # *** this needs thorough testing
-                            if  remaining_action.action == "determineVisits":
-                                remaining_action.priority.append(action_obj.priority)
-                                remaining_action.player.append(action_obj.player)
-                                remaining_action.targets.append(action_obj.targets[0])
-                                break
-                case 'determineVisits':
-                    self.determineVisits(action_obj)
-                case 'wiretapping':
-                    for target_num in action_obj.targets:
-                        self.players[target_num].notifications.append("You were wiretapped!")
-                case 'igniting': # *** the way this targeting works will need to go in the README
-                    if(action_obj.targets):
-                        for douse_ind in action_obj.targets:
-                            douse_ind = int (douse_ind) - 1
-                            target_inds.append(action_obj.player.perpetuated["douses"][douse_ind])
-                    else:
-                        target_inds = action_obj.player.perpetuated["douses"].copy()
+                            else: #(action_obj.player.role_name == "Consigliere") | (action_obj.player.role_name == "Necromancer"):
+                                if(action_obj.targets[0].perpetuated["doused_by"]):
+                                    result = "Arsonist"
+                                else:
+                                    result = self.getPlayerAppearance(action_obj.targets[0],"role")
+                                
+                                if startsWVowel(result):
+                                    result = "an " + result
+                                else:
+                                    result = "a " + result
 
-                    for target in target_inds:
-                        action_obj.player.perpetuated["douses"].remove(target)
-                        self.players[target].perpetuated["doused_by"].remove(action_obj.player.player_num)
+                            action_obj.player.notifications.append("Your target is " + result + "!")
+                        case 'checking':
+                            result = ""
+                            for category in self.categories:
+                                if category.slot_name == action_obj.targets[0]:
+                                    result = category.role_name
+                            if (result):
+                                action_obj.player.notifications.append(action_obj.targets[0] + " is " + result + "!")
+                            else:
+                                sys.exit(action_obj.targets[0] + " not found in role list for player: " + action_obj.player.player_name)
+                        case 'watching' | 'tracking' | 'stalking':
+                            # *** I can fix this to be way better
+                            if observing is None:
+                                observing = actionObject("determineVisits", [action_obj.player], targets = [action_obj.targets[0]])
+                                observing.priority.append(action_obj.priority)
+                                self.action_queue.append(observing)
+                            else:
+                                for remaining_action in self.action_queue: # *** this needs thorough testing
+                                    if  remaining_action.action == "determineVisits":
+                                        remaining_action.priority.append(action_obj.priority)
+                                        remaining_action.player.append(action_obj.player)
+                                        remaining_action.targets.append(action_obj.targets[0])
+                                        break
+                        case 'determineVisits':
+                            self.determineVisits(action_obj)
+                        case 'wiretapping':
+                            for target_num in action_obj.targets:
+                                self.players[target_num].notifications.append("You were wiretapped!")
+                        case 'igniting': # *** the way this targeting works will need to go in the README
+                            if(action_obj.targets):
+                                for douse_ind in action_obj.targets:
+                                    douse_ind = int (douse_ind) - 1
+                                    target_inds.append(action_obj.player.perpetuated["douses"][douse_ind])
+                            else:
+                                target_inds = action_obj.player.perpetuated["douses"].copy()
 
-                        if self.players[target].jailed: # *** could make a dict for phrasing from actions (i.e. igniting to ignite) if desired
-                            self.players[target].notifications.append("Someone tried to ignite you, but you were in jail!")
-                        elif (self.players[target].role_name == "Arsonist"):
-                            self.players[target].notifications.append("Someone tried to ignite you, but you are immune!")
-                            action_obj.player.notifications.append("You tried to ignite another Arsonist!") # *** idk if that's correct
-                        else:
-                            self.killPlayer(target, action_obj)
-                case _:
-                    print("Action defaulted: " + action_obj.action)
+                            for target in target_inds:
+                                action_obj.player.perpetuated["douses"].remove(target)
+                                self.players[target].perpetuated["doused_by"].remove(action_obj.player.player_num)
+
+                                if self.players[target].jailed: # *** could make a dict for phrasing from actions (i.e. igniting to ignite) if desired
+                                    self.players[target].notifications.append("Someone tried to ignite you, but you were in jail!")
+                                elif (self.players[target].role_name == "Arsonist"):
+                                    self.players[target].notifications.append("Someone tried to ignite you, but you are immune!")
+                                    action_obj.player.notifications.append("You tried to ignite another Arsonist!") # *** idk if that's correct
+                                else:
+                                    self.killPlayer(target, action_obj)
+                        case _:
+                            print("Action defaulted: " + action_obj.action)
                 
             self.action_queue.pop(0)
 
@@ -1091,8 +1101,9 @@ class game:
 
     def processVisit(self, action_obj):
         # *** Trap and hallow still need to be integrated into f'n to process transports and cancels
-        for target in action_obj.targets:
-            target.visitors.append(action_obj.player) 
+        for i in range(len(action_obj.targets)):
+            action_obj.targets[i] = self.getTargetPlayer(action_obj.targets[i])
+            action_obj.targets[i].visitors.append(action_obj.player) 
 
         for target in action_obj.targets:
             if getattr(target, "alerting", 0): # *** this needs to be tested
@@ -1100,35 +1111,40 @@ class game:
                 # an alerting player can never be transported, so using self.players list directly
                 self.updateKillDicts(actionObject("alerting", target, [action_obj.player]), self.atks_dict)
                 action_obj.cancelled = 1
-        
-        if not action_obj.cancelled:                 
-            if (action_obj.player.faction >= faction_dict["non-Town"]):
-                for target in action_obj.targets:
-                    if (target.trappers_targeting):
-                        for trapper in target.trappers_targeting:
-                            if(action_obj.player.player_num in trapper.perpetuated["traps_landed"]):
-                                trapper.perpetuated["traps_landed"].remove(action_obj.player.player_num)
-                                trapper.perpetuated["num_traps"] = 1
-                                self.updateKillDicts(actionObject("trapping_atk", trapper, [action_obj.player]), self.atks_dict)
-                                trapper.notifications.append("Your trap on " + target.player_name + " attacked someone!") # *** need to sort out, probably
-                                    # *** Need to cancel action (not implemented properly) # idk if this is still true
-                                action_obj.cancelled = 1
-                            else:
-                                trapper.perpetuated["traps_landed"].add(action_obj.player.player_num)
-                                action_obj.player.notifications.append("You were trapped!")
-                                trapper.notifications.append("Your trap on " + target.player_name + " was activated!") # *** re-write so only one noti
-            
-            if not action_obj.cancelled:
-            # *** this whole f'n needs work, but everything below here hasn't even been considered
-                # *** note hallow not currently cancelling the visit
-                if "hallow_cancels" in action_dict[action_obj.action]:
-                    for target in action_obj.targets:
-                        if target.hallowed:
-                            action_obj.player.notifications.append("Your " + action_obj.action + " was blocked by the Medium's hallow!")
+                return 1
+                      
+        if (action_obj.player.faction >= faction_dict["non-Town"]):
+            for target in action_obj.targets:
+                if (target.trappers_targeting):
+                    for trapper in target.trappers_targeting:
+                        if(action_obj.player.player_num in trapper.perpetuated["traps_landed"]):
+                            trapper.perpetuated["traps_landed"].remove(action_obj.player.player_num)
+                            trapper.perpetuated["num_traps"] = 1
+                            self.updateKillDicts(actionObject("trapping_atk", trapper, [action_obj.player]), self.atks_dict)
+                            trapper.notifications.append("Your trap on " + target.player_name + " attacked someone!") # *** need to sort out, probably
+                                # *** Need to cancel action (not implemented properly) # idk if this is still true
                             action_obj.cancelled = 1
-                    if action_obj.cancelled:
-                        for target in action_obj.targets:
-                            target.visitors.remove(action_obj.player.player_num)
+                            return 1
+                        
+                        else:
+                            trapper.perpetuated["traps_landed"].add(action_obj.player.player_num)
+                            action_obj.player.notifications.append("You were trapped!")
+                            trapper.notifications.append("Your trap on " + target.player_name + " was activated!") # *** re-write so only one noti
+            
+        # *** this whole f'n needs work, but everything below here hasn't even been considered
+            # *** note hallow not currently cancelling the visit
+            if "hallow_cancels" in action_dict[action_obj.action]:
+                for target in action_obj.targets:
+                    if target.hallowed:
+                        action_obj.player.notifications.append("Your " + action_obj.action + " was blocked by the Medium's hallow!")
+                        action_obj.cancelled = 1
+
+                if action_obj.cancelled:
+                    for target in action_obj.targets:
+                        target.visitors.remove(action_obj.player.player_num)
+                    return 1
+
+        return 0
 
     def updateKillDicts(self, action_obj, update_dict):
         # there might be more efficient logic here, rn it adds the affected_player_num to the dict if it 
@@ -1872,17 +1888,8 @@ class player:
                 if (self.perpetuated["cleans"] > 0):
                     self.addAction("cleaning")
                     self.max_actions += 1
-            case 'Shapeshifter':
+            #case 'Shapeshifter':
                 # *** need some manner of tracking the loss of action
-                if (self.perpetuated["action"]):
-                    self.addAction("blackmailing")
-                    self.addAction("blocking")
-                    self.addAction("cleaning")
-                    self.addAction("disguising")
-                    self.addAction("investigating")
-                    self.addAction("stalking")
-                    self.addAction("transporting")
-                    self.max_actions += 1
             case 'Arsonist':
                 if(self.perpetuated["first_douse"]):
                     self.addAction("dousing",2)
@@ -1917,6 +1924,11 @@ class player:
                 for static_action in role_class_dict[self.role_name]["actions"]:
                     self.addAction(static_action)
                     self.max_actions += 1
+
+    # *** If I do need variable inputs for the act function, I can define number of input arguments in roles_dict maybe?
+    def act(self, action_obj):
+        # *** I may do error checking on actions here instead of when creating the action objects, idk
+        return 1
 
     ## Role Class Helper Functions
     def updatePerpetuated (self, perpetuated_element):
@@ -2083,3 +2095,29 @@ class player:
             self.max_targets.append(action_dict[action_keyword]["max_targets"])
         else:
             self.max_targets.append(max_targets) # variable max_targets can be input to addAction
+
+class craigClass (player): # I am contractually obligated to specify that Craig means Shapeshifter.
+    def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
+        super().__init__(player_name, player_num, role_name, night_num, perpetuated_element)
+
+        if ~((night_num - 1) % 3):
+            self.perpetuated["action"] = 1
+
+        if (self.perpetuated["action"]):
+            self.addAction("blackmailing")
+            self.addAction("blocking")
+            self.addAction("cleaning")
+            self.addAction("disguising")
+            self.addAction("investigating")
+            self.addAction("stalking")
+            self.addAction("transporting")
+            self.max_actions += 1
+
+    def act(self, action_obj):
+        # *** The one case where this gets tricky is if transporting and gets cancelled by Witch control
+        self.perpetuated["action"] = 0
+
+        # *** Need to add further stipulation about not transporting the target of a Mafia kill
+        # because killing is lower on the priority list, I may check that as part of killing/arming? idk
+        return 1
+        
