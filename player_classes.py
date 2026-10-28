@@ -3,9 +3,14 @@ import sys
 from global_def import faction_dict
 from global_def import role_class_dict
 from global_def import action_dict
+from global_def import startsWVowel
 
 # define what is imported from file
-__all__ = ["player", "bodyguardClass", "medicClass", "craigClass", "veteranClass"]
+__all__ = ["player", "bodyguardClass", 
+           "medicClass", "veteranClass", 
+           "craigClass",
+           "necroClass", 
+           "doomClass"]
 
 class player:  
     def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):   
@@ -380,11 +385,10 @@ class medicClass (player):
 class veteranClass (player): 
     def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
         super().__init__(player_name, player_num, role_name, night_num, perpetuated_element)
-        
         if self.perpetuated["alerts"] > 0:
             if night_num > 1:
                 self.addAction("alerting")
-            if self.perpetuated["vests"]:
+            if self.perpetuated["vest"]:
                 self.addAction("vesting")
             self.max_actions += 1
 
@@ -395,7 +399,7 @@ class veteranClass (player):
 
             case "vesting":
                 self.perpetuated["alerts"] -= 1
-                self.perpetuated["vests"] = 0
+                self.perpetuated["vest"] = 0
 
         return 1
 
@@ -423,4 +427,64 @@ class craigClass (player): # I am contractually obligated to specify that Craig 
         # *** Need to add further stipulation about not transporting the target of a Mafia kill
         # because killing is lower on the priority list, I may check that as part of killing/arming? idk
         return 1
-        
+
+necro_actions_dict = {
+    "Medium" : ["disguising"],
+    "Retributionist" : ["disguising"],
+    "Bodyguard" : ["protecting", "vesting"],
+    "Medic" : ["alerting"],
+    "Trapper" :  ["alerting"],
+    "Veteran"  : ["alerting"],
+    "Vigilante"  : ["alerting"],
+    "Mafioso"  : ["investigating"],
+    "Ritualist" : ["investigating"],
+    "Shapeshifter" : ["investigating"],
+    "Necromancer"  : ["investigating"],
+    "Serial Killer ": ["cleaning"],
+    "Werewolf" : ["stalking"],
+    "Amnesiac" : ["transporting"],
+    "Doomsayer" : ["transporting"],
+    "Jester" : ["transporting"]
+}
+
+class necroClass (player):
+    def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
+        super().__init__(player_name, player_num, role_name, night_num, perpetuated_element)
+
+        self.max_actions += 2
+        self.addAction("hexing")
+        if self.perpetuated["dead_roles"]:
+            for dead_role in self.perpetuated["dead_roles"]:
+                if dead_role in necro_actions_dict:
+                    for opt in necro_actions_dict[dead_role]:
+                        self.addAction(opt)
+                else:
+                    for static_action in role_class_dict[dead_role]["actions"]: # *** needs tested
+                        self.addAction(static_action)
+                
+        else:
+            self.addAction("investigating") # *** find way to make exact
+
+    # *** add act f'n
+    def getDeathInfo(self, player):
+        if startsWVowel(player.role_name):
+            result = "an"
+        else:
+            result = "a"
+        result = player.player_name + " was " + result + " " + player.role_name + "! "
+        #result += "You may now " # *** I'm lazy rn, might implement later
+        self.notifications.append(result)
+        self.perpetuated["dead_roles"][player.role_name] = self.perpetuated["dead_roles"].get(player.role_name, 0) + 1
+
+class doomClass (player):
+    def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
+        super().__init__(player_name, player_num, role_name, night_num, perpetuated_element)
+
+        self.max_actions += 1
+        if night_num == 1:
+            self.addAction("checking")
+
+        else:
+            self.addAction("dooming")
+
+    # *** is act f'n necessary?
