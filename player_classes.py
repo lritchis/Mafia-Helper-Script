@@ -72,8 +72,6 @@ class player:
 
         if("perpetuated" in role_class_dict[self.role_name]):
             self.updatePerpetuated(perpetuated_element)
-        #print(self.role_name)
-        #print(self.perpetuated)
 
         # *** this is ugly, might want to fix
         #if self.faction >= faction_dict["non-Town"]:
@@ -195,10 +193,11 @@ class player:
         iter = 0
         list_regex = r"\A\[.+\](,\s){0,1}"
         dict_regex = r"\A\{(.+:.+(,){0,1}(\s){0,1})+\}(,\s){0,1}"
-        dict_key_regex = r"\A(.+)\s{0,1}:\s{0,1}"
+        dict_key_regex = r"\A([^:]+)\s{0,1}:\s{0,1}"
+        dict_value_regex = r"\A.+\s{0,1}:\s(.+),{0,1}"
         set_regex = r"\A\{.+\}(,\s){0,1}"
         int_regex = r"(\A-{0,1}[0-9]+)(,\s){0,1}"
-        string_regex = r"\A\'([A-Za-z0-9]+(\s){0,1})+\'(,\s){0,1}" # *** I think I'd need to account for quotation marks? Anyways I'm not using this currently
+        string_regex = r"\A\'([A-Za-z0-9]+(\s){0,1})+\'(,\s){0,1}" 
 
         if text_type is int:
             return int (text)
@@ -207,7 +206,6 @@ class player:
         elif text_type is list:
             output = [] 
             structure_regex = [r"\A\[", r"\]\Z"]
-            #type_match_regex = r"\A\[.*\]\Z"
         elif text_type is set or text_type is dict:
             if text_type is dict:
                 output = {}
@@ -218,9 +216,6 @@ class player:
             structure_regex = [r"\A\{", r"\}\Z"]
         else:
             sys.exit("Error in readFromXML, text_type provided is not valid: " + str(text_type))
-            #type_match_regex = r"\A\{.*\}\Z"
-        #else:
-        #    return text
 
         if(re.match(structure_regex[0] + r".*" + structure_regex[1], text)): # check if text represents the provided type structure
             text = re.sub(structure_regex[0],"",text) # remove starting and ending brackets from text (text is used to check if all entries are read)
@@ -230,7 +225,12 @@ class player:
             while(text): 
                 if text_type is dict:
                     key = re.search(dict_key_regex, text).group(1)
+                    if (re.match(int_regex, key)):
+                        key = int (key)
+                    elif (re.match(string_regex, key)):
+                        key = re.match(string_regex, text).group(1)
                     text = re.sub(dict_key_regex,"",text)
+
                 # check if text matches the pattern for a nested list, an int, or default to string
                 if (re.match(int_regex, text)):
                     search_pattern = int_regex
@@ -245,7 +245,7 @@ class player:
                     entry = self.readFromXML(re.search(list_regex, text).group(1), list) # recursive f'n call for nested lists
 
                 elif (re.match(dict_regex, text)):
-                    search_pattern = list_regex
+                    search_pattern = dict_value_regex
                     entry = self.readFromXML(re.search(dict_regex, text).group(1), dict) # recursive f'n call for nested dicts
 
                 elif (re.match(set_regex, text)):
