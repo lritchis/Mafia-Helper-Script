@@ -17,7 +17,7 @@ RT_regex = TI_regex + r"|" + TK_regex + r"|" + TP_regex + r"|" + TS_regex
 mafia_regex = r"\ABlackmailer\b|\AConsigliere\b|\AConsort\b|\ACourier\b|\ADisguiser\b|\AGodfather\b|\AJanitor\b|\AMafioso\b|\AShapeshifter\b|\AStalker\b"
 NK_regex = r"\AArsonist\b|\ASerial Killer\b|\AWerewolf\b"
 NE_regex =  r"\ALifebinder\b|\ANecromancer\b|\AWitch\b"
-NC_regex = r"\AAmnesiac\b|\AExecutioner\b|\AJester\b"
+NC_regex = r"\AAmnesiac\b|\ADoomsayer\b|\AExecutioner\b|\AJester\b"
 roles_regex = jailor_regex + r"|" + RT_regex + r"|" + mafia_regex + r"|" + NK_regex + r"|" + NE_regex + r"|" + NC_regex
 
 # define priorities for various action keywords
@@ -38,12 +38,17 @@ action_dict = {
                      "is_visit" : 0,
                      "targeted" : 0
     },
+    "dooming" : {"priority" : 0,
+                         "is_visit" : 0,
+                         "max_targets" : 3,
+                         "targeted" : 0 # *** ?
+    },
     "haunting" : {"priority" : 0,
                      "is_visit" : 0,
                      "max_targets" : 1,
-                     "targeted" : 0
+                     "targeted" : 0  # *** ?
     },
-        "reviving" : {"priority" : 0, # *** reviving can't be blocked, so it should be 0 priority
+    "reviving" : {"priority" : 0, # *** reviving can't be blocked, so it should be 0 priority
                      "is_visit" : 0,
                      "max_targets" : 1,
                      "targeted" : 1
@@ -317,7 +322,8 @@ investigator_categories = [
     #["Medium", "Doctor", "Janitor", "Shapeshifter", "Serial Killer", "Amnesiac"],
     ["Scientist", "Bodyguard", "Shapeshifter", "Arsonist", "Jester"],
     ["Medium", "Doctor", "Janitor", "Serial Killer", "Amnesiac"],
-    ["Lookout", "Tracker", "Medic", "Stalker", "Werewolf", "Executioner"],
+    #["Lookout", "Tracker", "Medic", "Stalker", "Werewolf", "Executioner"],
+    ["Lookout", "Tracker", "Medic", "Stalker", "Werewolf", "Doomsayer"],
     ["Investigator", "Veteran", "Vigilante", "Consigliere", "Mafioso", "Necromancer"],
     ["Transporter", "Alchemist", "Trapper", "Courier", "Disguiser", "Lifebinder"],
     ["Escort", "Retributionist", "Cleric", "Blackmailer", "Consort", "Witch"]
@@ -368,7 +374,8 @@ role_class_dict = {
     },
 
     "Bodyguard" : {"actions" : ["protecting"],
-                "faction" : "Town"
+                "faction" : "Town",
+                "perpetuated" : {"vest" : 1}
     },
 
     "Cleric" : {"actions" : ["blessing"],
@@ -409,7 +416,7 @@ role_class_dict = {
 
     "Veteran" : {"actions" : [],
                 "faction" : "Town",
-                "perpetuated" : {"alerts" : 3,"vests" : 1}
+                "perpetuated" : {"alerts" : 3,"vest" : 1}
     },
 
     "Vigilante" : {"actions" : [],
@@ -486,7 +493,7 @@ role_class_dict = {
 
     "Necromancer" : {"actions" : [],
                 "faction" : "NE",
-                "perpetuated" : {"shield" : 1}
+                "perpetuated" : {"dead_roles" : {}, "shield" : 1}
     },
 
     "Witch" : {"actions" : ["controlling"],
@@ -503,7 +510,10 @@ role_class_dict = {
                 "faction" : "non-Town",
                 "perpetuated" : {"switch" : 1, "target" : None}
     },
-
+    "Doomsayer" : {"actions" : [],
+                    "faction" : "non-Town",
+                    "perpetuated" : {"shield" : 1}
+    },
     "Jester" : {"actions" : [],
                 "faction" : "non-Town"
     }
