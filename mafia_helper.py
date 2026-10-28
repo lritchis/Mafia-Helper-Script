@@ -75,6 +75,7 @@ class game:
         
         self.categories = []
         self.players = []
+        self.notify_for_deaths = [] # list to hold Amnesiacs and Necromancers that learn information for every death
         # will add 1 for every Townie found. Compared to a logical condition for finding the last Townie this is easier and should be just as efficient
         self.num_town = 0 
         self.living_medium = 0
@@ -121,6 +122,9 @@ class game:
                     player_obj = veteranClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
                 case "Shapeshifter":
                     player_obj = craigClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
+                case "Necromancer":
+                    player_obj = necroClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
+                    self.notify_for_deaths.append(player_obj)
                 case _:
                     player_obj = player(player_name, player_num, role_name, self.night_num, perpetuated_element)
 
@@ -680,6 +684,10 @@ class game:
                 self.death_announcements[player_num] = [death_source.action]
             else:
                 self.death_announcements[player_num].append(death_source.action)
+
+            for notified_player in self.notify_for_deaths: # *** we could integrate kills into action queue and queue this notification for Amnes/Necros, idk. should consider
+                notified_player.getDeathInfo(self.players[player_num])
+        
         else:
             sys.exit("Death source not recognized: " + death_source.action)
 
@@ -703,7 +711,7 @@ class game:
                 noti += "cleaned."
             else:
                 appearance = self.getPlayerAppearance(dead_player,"role")
-                
+                # *** needs to be updated to use "the" for unique roles
                 if(startsWVowel(appearance)):
                     noti += "an "
                 else:
