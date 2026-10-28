@@ -112,7 +112,7 @@ class game:
             if (role_class_dict[role_name]["faction"] == "Town"):
                 self.num_town += 1
 
-            match (role_name):
+            match (role_name): # *** We can probably make a more efficient check here to avoid checking against all cases every time
                 case "Bodyguard": 
                     player_obj = bodyguardClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
                 case "Medic":
@@ -257,7 +257,7 @@ class game:
             action_obj = self.action_queue[0]
             target_inds = []
 
-            if ~(action_obj.cancelled):
+            if not (action_obj.cancelled):
                 if action_obj.targeted: 
                     if action_obj.is_visit:
                         action_obj.cancelled = self.processVisit(action_obj)
@@ -266,7 +266,7 @@ class game:
                 # *** PLAN: Transports, controls, blocks, hallows, and traps will be set as non-visits and then visits assigned manually in
                 # resolution f'n
                 # *** need to implement immunities
-                if ~(action_obj.cancelled): # checking this again feels kinda gross but idk how to do that more cleanly 
+                if not (action_obj.cancelled): # checking this again feels kinda gross but idk how to do that more cleanly 
                     # resolve any role-specific resource tracking or limitations # *** could word this comment better later
                     if(getattr(action_obj.player, "act", 0)): # *** I should check this sooner and have the resolve actions in their own space? idk
                         action_obj.player.act(action_obj)
@@ -913,6 +913,7 @@ class game:
         for location_ind, player in enumerate(self.players):
             if (player.player_name == target):
                 target_location = location_ind
+            # *** can probably put a break here, or just make players a dict tbh
         
         if(target_location == -99): # I don't think this can even happen
             sys.exit("Target not found in player list: " + target)
