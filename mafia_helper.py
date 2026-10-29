@@ -97,8 +97,8 @@ class game:
             player_name = category.find('Player').text
             perpetuated_element = category.find('Perpetuated')
 
-            if(vote_target == player_name): # vote input will kill whomever was voted that day ***haven't tested btw
-                perpetuated_element.find("living_status").text = "0"
+            #if(vote_target == player_name): # vote input will kill whomever was voted that day ***haven't tested btw
+                #perpetuated_element.find("living_status").text = "0"
                 # *** Godfather promotion needs to be able to occur here
 
             if(perpetuated_element.find("living_status").text == "1"):
@@ -130,6 +130,10 @@ class game:
 
             self.players.append(player_obj)
             self.categories.append(roleSlot(slot_name, role_name))
+
+        vote_target = self.targetText2PlayerNum(vote_target)
+        for notified_player in self.notify_for_deaths: 
+            notified_player.getDeathInfo(self.players[vote_target])
 
         if(num_living > int(len(self.players) / 2)):
             if(GF_ind > 0):
@@ -687,7 +691,7 @@ class game:
 
             for notified_player in self.notify_for_deaths: # *** we could integrate kills into action queue and queue this notification for Amnes/Necros, idk. should consider
                 notified_player.getDeathInfo(self.players[player_num])
-        
+
         else:
             sys.exit("Death source not recognized: " + death_source.action)
 
