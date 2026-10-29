@@ -133,7 +133,8 @@ class game:
 
         vote_target = self.targetText2PlayerNum(vote_target)
         for notified_player in self.notify_for_deaths: 
-            notified_player.getDeathInfo(self.players[vote_target])
+            notified_player.getDeathInfo(self.players[vote_target], is_vote=1) # *** kinda brute force, hopefully change when making day phase script
+        self.players[vote_target].perpetuated["living_status"] = 0
 
         if(num_living > int(len(self.players) / 2)):
             if(GF_ind > 0):
