@@ -130,10 +130,6 @@ class player:
                 self.addAction("mauling",1)
                 self.addAction("stalking",1)
                 self.max_actions += 1
-            case 'Necromancer':
-                self.addAction("investigating") # *** also not implemented at all lol
-                self.addAction("transporting")
-                self.max_actions += 1
             # ***Exe
             #case 'Executioner':
                 #if(self.perpetuated["target"] is None): # Night 1, assign target
@@ -452,27 +448,27 @@ class necroClass (player):
         super().__init__(player_name, player_num, role_name, night_num, perpetuated_element)
         self.action_to_role_map = {}
         self.max_actions += 2
-        self.addAction("hexing")
+        super().addAction("hexing")
         if self.perpetuated["dead_roles"]:
             for dead_role in self.perpetuated["dead_roles"]:
-                if dead_role in necro_actions_dict:
-                    for opt in necro_actions_dict[dead_role]:
-                        self.addAction(opt)
-                        if opt in self.action_to_role_map:
-                            self.action_to_role_map[opt].append(dead_role)
-                        else:
-                            self.action_to_role_map[opt] = [dead_role]
-
-                else:
-                    for static_action in role_class_dict[dead_role]["actions"]: # *** needs tested
-                        self.addAction(static_action)
-                        if static_action in self.action_to_role_map:
-                            self.action_to_role_map[static_action].append(dead_role)
-                        else:
-                            self.action_to_role_map[static_action] = [dead_role]
+                self.addAction(dead_role)
                 
         else:
-            self.addAction("investigating") # *** find way to make exact
+            super().addAction("investigating") # *** find way to make exact
+
+    def addAction(self, dead_role):
+        if dead_role in necro_actions_dict:
+            options_source = necro_actions_dict[dead_role]
+
+        else:
+            options_source = role_class_dict[dead_role]["actions"] # *** needs tested
+        
+        for opt in options_source:
+            super().addAction(opt)
+            if opt in self.action_to_role_map:
+                self.action_to_role_map[opt].append(dead_role)
+            else:
+                self.action_to_role_map[opt] = [dead_role]
 
     def act(self, action_obj): # *** need a way to distinguish between investigates
         if (self.perpetuated["dead_roles"]) and (action_obj.action != "hexing"):
@@ -490,7 +486,7 @@ class necroClass (player):
                     if not self.perpetuated["douses"]:
                         self.perpetuated["douses"] = []
 
-    def getDeathInfo(self, player):
+    def getDeathInfo(self, player, is_vote = 0):
         if startsWVowel(player.role_name):
             result = "an"
         else:
@@ -499,6 +495,9 @@ class necroClass (player):
         #result += "You may now " # *** I'm lazy rn, might implement later
         self.notifications.append(result)
         self.perpetuated["dead_roles"][player.role_name] = self.perpetuated["dead_roles"].get(player.role_name, 0) + 1
+        
+        if is_vote:
+            self.addAction(player.role_name)
 
 class doomClass (player):
     def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
