@@ -450,7 +450,7 @@ necro_actions_dict = {
 class necroClass (player):
     def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
         super().__init__(player_name, player_num, role_name, night_num, perpetuated_element)
-
+        self.action_to_role_map = {}
         self.max_actions += 2
         self.addAction("hexing")
         if self.perpetuated["dead_roles"]:
@@ -458,14 +458,38 @@ class necroClass (player):
                 if dead_role in necro_actions_dict:
                     for opt in necro_actions_dict[dead_role]:
                         self.addAction(opt)
+                        if opt in self.action_to_role_map:
+                            self.action_to_role_map[opt].append(dead_role)
+                        else:
+                            self.action_to_role_map[opt] = [dead_role]
+
                 else:
                     for static_action in role_class_dict[dead_role]["actions"]: # *** needs tested
                         self.addAction(static_action)
+                        if static_action in self.action_to_role_map:
+                            self.action_to_role_map[static_action].append(dead_role)
+                        else:
+                            self.action_to_role_map[static_action] = [dead_role]
                 
         else:
             self.addAction("investigating") # *** find way to make exact
 
-    # *** add act f'n
+    def act(self, action_obj): # *** need a way to distinguish between investigates
+        if (self.perpetuated["dead_roles"]) and (action_obj.action != "hexing"):
+            role_used = self.action_to_role_map[action_obj.action][0]
+            self.perpetuated["dead_roles"][role_used] -= 1
+            if not self.perpetuated["dead_roles"][role_used]:
+                self.perpetuated["dead_roles"].pop(role_used, None)
+
+            match action_obj.action:
+                # *** add cleans
+                case "disguising":
+                    if not self.perpetuated["active_disguise"]:
+                        self.perpetuated["active_disguise"] = [-1, -1]
+                case "dousing":
+                    if not self.perpetuated["douses"]:
+                        self.perpetuated["douses"] = []
+
     def getDeathInfo(self, player):
         if startsWVowel(player.role_name):
             result = "an"
