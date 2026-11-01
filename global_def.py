@@ -422,7 +422,7 @@ role_class_dict = {
 
     "Vigilante" : {"actions" : [],
                 "faction" : "Town",
-                "perpetuated" : {"shots" : 3}
+                "perpetuated" : {"bullets" : 3, "loaded" : 0}
     },
 
     "Godfather" : {"actions" : ["killing"],
