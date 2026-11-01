@@ -4,7 +4,8 @@ import re
 __all__ = ["category_regex", "roles_regex", "action_dict", "death_message_dict", 
            "atk_state_map", "num_atk_states", "atk_flags", "defense_state_map", "num_defense_states",
            "startsWVowel", "investigator_categories_dict", 
-           "role_class_dict", "faction_dict"]
+           "role_class_dict", "faction_dict",
+           "res_name_map"]
 
 # if you're curious how much I hate myself, the answer is yes
 category_regex = r'\A[A-Z]*\d*\b' #r'(\AJAL\b|\ATI\d*\b|\ATK\d*\b|\ATP\d*\b|\ATS\d*\b|\ART\d*\b|\AGF\b|\ARM\d*\b|\ANK\d*\b|\ANC\d*\b|\ANE\d*\b|\ARN\d*\b|\ARNT\d*\b|\bANY\d*\b)'
@@ -525,4 +526,10 @@ faction_dict = { # might add more to this, primarily just Town/non-Town distingu
     "NE" : 3,
     "Mafia" : 4,
     "NK" : 5
+}
+
+res_name_map = {
+    "tracking" : "observing",
+    "watching" : "observing",
+    "stalking" : "observing"
 }
