@@ -371,7 +371,8 @@ role_class_dict = {
     },
 
     "Alchemist" : {"actions" : ["delivering to"],
-                "faction" : "Town"
+                "faction" : "Town",
+                "perpetuated" : {"delivered_potions" : {}}
     },
 
     "Bodyguard" : {"actions" : ["protecting"],
