@@ -6,7 +6,8 @@ from global_def import action_dict
 from global_def import startsWVowel
 
 # define what is imported from file
-__all__ = ["player", "bodyguardClass", 
+__all__ = ["player", 
+           "alchClass", "bodyguardClass", 
            "vigiClass", "medicClass", "veteranClass", 
            "craigClass",
            "necroClass", 
@@ -115,11 +116,6 @@ class player:
                     self.addAction("jailing")
                     self.addAction("executing")
                     self.max_actions = 2
-            case 'Alchemist':
-                self.addAction("delivering to", 2)
-                self.max_actions += 1
-                self.addAction("activating") # *** need to give self potion, and allow activation targets
-                self.max_actions += 1
             case 'Mafioso':
                 if(self.perpetuated["shot"]):
                     self.addAction("killing")
@@ -311,6 +307,40 @@ class player:
             self.max_targets.append(action_dict[action_keyword]["max_targets"])
         else:
             self.max_targets.append(max_targets) # variable max_targets can be input to addAction
+
+class alchClass (player): # *** class not tested
+    def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
+        super().__init__(player_name, player_num, role_name, night_num, perpetuated_element)
+        if night_num == 0:
+            self.perpetuated["delivered_potions"].add(player_num) # start with self potion
+
+        if night_num <= 2:
+            self.addAction("delivering to", 2)
+        else:
+            self.addAction("delivering to", 1)
+        self.max_actions += 1
+
+        if self.perpetuated["delivered_potions"]:
+            self.addAction("activating") # *** need to allow activation targets
+            self.max_actions += 1
+
+        def act(self, action_obj):
+            match action_obj.action:
+                case "activating":
+                    for target in action_obj.targets:
+                        if target.player_num in self.perpetuated["delivered_potions"]:
+                            self.perpetuated["delivered_potions"].remove(target.player_num)
+                        else:
+                            sys.exit("Error in alchClass.act: Potion activation on " + target.player_name + " when they don't have a potion from " + self.player_name + ".")
+                case "delivering to":
+                    for target in action_obj.targets:
+                        if target is not self:
+                            if target.player_num not in self.perpetuated["delivered_potions"]:
+                                self.perpetuated["delivered_potions"].add(target.player_num)
+                            else:
+                                sys.exit("Error in alchClass.act: " + target.player_name + " already has a potion from " + self.player_name + ".")
+                        else:
+                            sys.exit("Error in alchClass.act: " + self.player_name + " attempting to give potion to self.")
 
 class bodyguardClass (player): 
     def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
