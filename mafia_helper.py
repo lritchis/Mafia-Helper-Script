@@ -116,6 +116,8 @@ class game:
             match (role_name): # *** We can probably make a more efficient check here to avoid checking against all cases every time
                 case "Bodyguard": 
                     player_obj = bodyguardClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
+                case "Vigilante":
+                    player_obj = vigiClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
                 case "Medic":
                     player_obj = medicClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
                 case "Veteran":
