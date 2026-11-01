@@ -114,6 +114,8 @@ class game:
                 self.num_town += 1
 
             match (role_name): # *** We can probably make a more efficient check here to avoid checking against all cases every time
+                case "Alchemist":
+                    player_obj = alchClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
                 case "Bodyguard": 
                     player_obj = bodyguardClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
                 case "Vigilante":
