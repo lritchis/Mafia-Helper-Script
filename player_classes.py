@@ -7,7 +7,7 @@ from global_def import startsWVowel
 
 # define what is imported from file
 __all__ = ["player", "bodyguardClass", 
-           "medicClass", "veteranClass", 
+           "vigiClass", "medicClass", "veteranClass", 
            "craigClass",
            "necroClass", 
            "doomClass"]
@@ -120,10 +120,6 @@ class player:
                 self.max_actions += 1
                 self.addAction("activating") # *** need to give self potion, and allow activation targets
                 self.max_actions += 1
-            case 'Vigilante':
-                if(self.perpetuated["shots"]) and (night_num > 1):
-                    self.addAction("shooting")
-                    self.max_actions += 1
             case 'Mafioso':
                 if(self.perpetuated["shot"]):
                     self.addAction("killing")
@@ -376,6 +372,7 @@ class medicClass (player):
                 return 0
 
         return 1
+    
 class veteranClass (player): 
     def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
         super().__init__(player_name, player_num, role_name, night_num, perpetuated_element)
@@ -396,6 +393,29 @@ class veteranClass (player):
                 self.perpetuated["vest"] = 0
 
         return 1
+
+class vigiClass (player): 
+    def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
+        super().__init__(player_name, player_num, role_name, night_num, perpetuated_element)
+
+        if self.perpetuated["bullets"] > 0 and not self.perpetuated["loaded"]:
+            self.addAction("loading")
+            self.max_actions += 1
+        elif self.perpetuated["loaded"]:
+            self.addAction("shooting")
+            self.max_actions += 1
+
+    def act(self, action_obj):
+            match action_obj.action:
+                case "loading":
+                    self.perpetuated["bullets"] -= 1
+                    self.perpetuated["loaded"] = 1
+                case "shooting":
+                    self.perpetuated["loaded"] = 0
+                case _:
+                    return 0
+    
+            return 1 
 
 class craigClass (player): # I am contractually obligated to specify that Craig means Shapeshifter.
     def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
