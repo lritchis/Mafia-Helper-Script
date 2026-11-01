@@ -130,11 +130,11 @@ class game:
 
             self.players.append(player_obj)
             self.categories.append(roleSlot(slot_name, role_name))
-
-        vote_target = self.targetText2PlayerNum(vote_target)
-        for notified_player in self.notify_for_deaths: 
-            notified_player.getDeathInfo(self.players[vote_target], is_vote=1) # *** kinda brute force, hopefully change when making day phase script
-        self.players[vote_target].perpetuated["living_status"] = 0
+        if vote_target:
+            vote_target = self.targetText2PlayerNum(vote_target)
+            for notified_player in self.notify_for_deaths: 
+                notified_player.getDeathInfo(self.players[vote_target], is_vote=1) # *** kinda brute force, hopefully change when making day phase script
+            self.players[vote_target].perpetuated["living_status"] = 0
 
         if(num_living > int(len(self.players) / 2)):
             if(GF_ind > 0):
@@ -743,10 +743,16 @@ class game:
             notifications_file.write(indet + "\n")
 
     ## Helper Functions for Game Class
-    def queueResolution(self, action_obj): # *** This needs improved, at least to output the resolution object
-        if action_obj.action in self.resolution_dict:
-            self.resolution_dict[action_obj.action].player.append(action_obj.player)
-            self.resolution_dict[action_obj.action].targets.append(action_obj.targets)
+    def queueResolution(self, action_obj):
+        if action_obj.action in self.res_name_map:
+            res_obj_action = "resolve_" + self.res_name_map[action_obj.action]
+        else:
+            res_obj_action = "resolve_" + action_obj.action
+        
+        # *** I still want to go through this and potentially improve it
+        if res_obj_action in self.resolution_dict:
+            self.resolution_dict[res_obj_action].player.append(action_obj.player)
+            self.resolution_dict[res_obj_action].targets.append(action_obj.targets)
 
         else:
             queue_len = len(self.action_queue)
@@ -755,10 +761,7 @@ class game:
                     if remaining_action.priority > action_dict["resolve_" + action_obj.action]["priority"]:
                         break
             
-            if (re.match(r"tracking|watching|stalking", action_obj.action)): # separate thing for these is kinda gross but idc
-                self.action_queue.insert(queue_ind + 1, actionObject("resolve_observing" + action_obj.action, [action_obj.player], [action_obj.targets]))
-            else:
-                self.action_queue.insert(queue_ind + 1, actionObject("resolve_" + action_obj.action, [action_obj.player], [action_obj.targets]))
+                self.action_queue.insert(queue_ind + 1, actionObject(res_obj_action, [action_obj.player], [action_obj.targets]))
 
     # *** the resolution_exists thing is weird
     def findResolutionObj(self, action_obj, resolution_exists = 0): # *** need to go back and use this for BM and such. plus target_inds usage change
