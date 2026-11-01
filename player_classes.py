@@ -13,7 +13,27 @@ __all__ = ["player", "bodyguardClass",
            "doomClass"]
 
 class player:  
-    def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):   
+    def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None): 
+# region Function: player.__init__ 
+##############################################################################################################################
+# Class: player
+# in:
+# str player_name: player's name
+# int player_num: player's ordered number in the game.players list
+# str role_name: player's role
+# int night_num: night number for the evaluation. default 0 for game initialization
+# ***Elem perpetuated_element: XML tree element for perpetuated player information. default to None for game initialization
+#
+# out: None
+#
+# Description:
+# Initializes player class object. 
+# When initializing the game (perpetuated_element defaulted to None), sets common perpetuated values appropriately
+# and pulls role-specific perpetuated variables from role_class_dict by calling self.updatedPerpetuated() method. 
+# When evaluating a night, reads all perpetuated information in perpetuated_element by calling self.readFromXML on all 
+# common fields and self.updatePerpetuated() for all class-dependent fields.
+##############################################################################################################################
+# endregion 
         self.player_name = player_name
 
         # non-perpetuated class variables for evaluating night actions
@@ -150,13 +170,13 @@ class player:
         # *** I may do error checking on actions here instead of when creating the action objects, idk
         return 1
 
-    ## Role Class Helper Functions
+    ## Player Class Helper Functions
     def updatePerpetuated (self, perpetuated_element):
+    # region Function: player.updatePerpetuated()
     ##############################################################################################################################
-    # Function: updatePerpetuated
+    
     # Class: player
     # in:
-    #   player self
     #   ET.Element perpetuated_element: XML Tree Element corresponding to a player's "perpetuated" tag in XML status doc. Used to 
     #   track role information across nights. If perpetuated_element is None, the player is being initialized. 
     # out:
@@ -165,27 +185,31 @@ class player:
     #   Use role_class_dict for the given role name to iterate through all expected items on the perpetuated list. 
     #   Pull data from the perpetuated_element if it exists, otherwise set to default from role_class_dict. 
     ##############################################################################################################################
+    # endregion
         if(perpetuated_element):
             for expected_elem, default_value in role_class_dict[self.role_name]["perpetuated"].items():
                 expected_type = type(default_value)
                 self.perpetuated[expected_elem] = self.readFromXML(perpetuated_element.find(expected_elem).text, expected_type)
-                #if(type(role_class_dict[self.role_name]["perpetuated"]["default"][elem_ind]) is int):
-                #    self.perpetuated[expected_elem] = int(perpetuated_element.find(expected_elem).text)
-                #elif(type(role_class_dict[self.role_name]["perpetuated"]["default"][elem_ind]) is list):
-                #    self.perpetuated[expected_elem] = self.readListFromXML(perpetuated_element.find(expected_elem).text)
-                #elif(type(role_class_dict[self.role_name]["perpetuated"]["default"][elem_ind]) is set):
-                #    self.perpetuated[expected_elem] = self.readSetFromXML(perpetuated_element.find(expected_elem).text)
-                #else:
-                #    self.perpetuated[expected_elem] = perpetuated_element.find(expected_elem).text
             
         else:
             for expected_elem, default_value in role_class_dict[self.role_name]["perpetuated"].items():
                 self.perpetuated[expected_elem] = default_value 
 
     def readFromXML(self, text, text_type):
-        # takes XML data for a list stored as one string (i.e. "[entry1, entry2, entry3]") and re-constructs the list as string entries. 
-        # Converts whole number entries to int type instead of string. 
-
+    # region Function: player.readFromXML
+    ##############################################################################################################################
+    # Class: player
+    # in:
+    # str text: Text string to be parsed. 
+    # text_type: Expected type of the output. Determined using regex to classify the text input.
+    # out:
+    # Will output the text parsed and cast as the appropriate type.
+    # Description:
+    # Takes text input as it appears in the XML status file and parses it for use. 
+    # Can handle str, int, set, dict, and lists.
+    # Will recursively call itself to handle nested lists, sets, dicts. 
+    ##############################################################################################################################
+    # endregion
         iter = 0
         list_regex = r"\A\[.+\](,\s){0,1}"
         dict_regex = r"\A\{(.+:.+(,){0,1}(\s){0,1})+\}(,\s){0,1}"
@@ -270,48 +294,22 @@ class player:
         
         return output
 
-    def readSetFromXML(self, text):
-            # takes XML data for a list stored as one string (i.e. "[entry1, entry2, entry3]") and re-constructs the list as string entries. 
-            # Converts whole number entries to int type instead of string. 
-            out_set = set()
-            iter = 0
-            list_regex_pattern = r"(\A\[.+\])(,\s){0,1}"
-            int_regex_pattern = r"(\A-{0,1}[0-9]+)(,\s){0,1}"
-            string_regex_pattern = r"(\A[A-Za-z0-9]+)(,\s){0,1}"
-
-            if(re.match(r"\A\{.*\}\Z",text)): # check if text represents a set
-                
-                text = re.sub(r"\A\{","",text) # remove starting and ending brackets from text (text is used to check if all entries are read)
-                text = re.sub(r"\}\Z","",text) 
-    
-                # iterate while text still has characters
-                while(text): 
-                    # check if text matches the pattern for a nested list, an int, or default to string
-                    if(re.match(list_regex_pattern, text)):
-                        search_pattern = list_regex_pattern
-                        entry = self.readListFromXML(re.search(list_regex_pattern, text).group(1)) # recursive f'n call for nested lists
-                    elif(re.match(int_regex_pattern, text)):
-                        search_pattern = int_regex_pattern
-                        entry = int (re.search(search_pattern,text).group(1))
-                        
-                    else:
-                        search_pattern = string_regex_pattern
-                        entry = re.search(search_pattern,text).group(1)
-    
-                    out_set.add(entry)
-                    text = re.sub(search_pattern,"",text) # removal of pattern from text to meet while loop condition
-    
-                    # track iterations and break on 100 as a safety measure against getting stuck in this loop
-                    iter = iter + 1
-                    if(iter >= 100):
-                        sys.exit("Error in readDictFromXML, can't exit while loop")
-            
-            elif not(re.match(r"\Aset\(.*\)\Z",text)): # if it's an empty set, it looks like this for some reason idk
-                sys.exit("Non-set passed to readSetFromXML: " + text)
-            
-            return out_set
-
     def addAction(self, action_keyword, max_targets = 0):
+    # region Function: player.addAction
+    ##############################################################################################################################
+    # Class: player
+    # in:
+    # str action_keyword: Action keyword to be added to list of potential actions for the player.
+    # int max_targets: Maximum number of targets available to be selected for this action.
+    #
+    # out:
+    # None
+    # Description:
+    # Adds the provided action keyword to action_keywords list attribute. 
+    # Either pulls the appropriate number of maximum targets from action_dict, if available, or 
+    # uses the provided max_targets value if not and appends to max_targets list attribute.
+    ##############################################################################################################################
+    # endregion
         self.action_keywords.append(action_keyword)
         if("max_targets" in action_dict[action_keyword]):
             self.max_targets.append(action_dict[action_keyword]["max_targets"])
