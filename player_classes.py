@@ -7,7 +7,7 @@ from global_def import startsWVowel
 
 # define what is imported from file
 __all__ = ["player", 
-           "alchClass", "bodyguardClass", 
+           "alchClass", "bodyguardClass", "docClass",
            "vigiClass", "medicClass", "veteranClass", 
            "craigClass",
            "necroClass", 
@@ -359,6 +359,23 @@ class bodyguardClass (player):
             case _:
                 pass
         return 1
+
+class docClass (player):
+    def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
+        super().__init__(player_name, player_num, role_name, night_num, perpetuated_element)
+
+        if self.perpetuated["self-saving"]:
+            self.addAction("self-saving")
+
+    def act(self, action_obj):
+        match action_obj.action:
+            case "saving":
+                if action_obj.targets_player_num != self.player_num:
+                    return 1
+                else:
+                    sys.exit("Error in docClass.act: " + self.player_name + " self-saving without using self-save action.") # *** needs tested
+            case "self-saving":
+                self.perpetuated["self-save"] = 0 # *** need to restore on success
 
 class medicClass (player): 
     def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
