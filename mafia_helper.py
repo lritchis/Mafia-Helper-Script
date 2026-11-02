@@ -126,6 +126,8 @@ class game:
                     player_obj = medicClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
                 case "Veteran":
                     player_obj = veteranClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
+                case "Janitor":
+                    player_obj = janitorClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
                 case "Mafioso":
                     player_obj = mafiosoClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
                 case "Shapeshifter":
