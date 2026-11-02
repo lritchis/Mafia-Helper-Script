@@ -118,17 +118,25 @@ class game:
                     player_obj = alchClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
                 case "Bodyguard": 
                     player_obj = bodyguardClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
+                case "Doctor": 
+                    player_obj = docClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
                 case "Vigilante":
                     player_obj = vigiClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
                 case "Medic":
                     player_obj = medicClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
                 case "Veteran":
                     player_obj = veteranClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
+                case "Mafioso":
+                    player_obj = mafiosoClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
                 case "Shapeshifter":
                     player_obj = craigClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
+                case "Werewolf":
+                    player_obj = werewolfClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
                 case "Necromancer":
                     player_obj = necroClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
                     self.notify_for_deaths.append(player_obj)
+                case "Doomsayer":
+                    player_obj = doomClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
                 case _:
                     player_obj = player(player_name, player_num, role_name, self.night_num, perpetuated_element)
 
