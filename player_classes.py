@@ -10,6 +10,7 @@ __all__ = ["player",
            "alchClass", "bodyguardClass", "docClass",
            "vigiClass", "medicClass", "veteranClass", 
            "mafiosoClass", "craigClass",
+           "werewolfClass",
            "necroClass", 
            "doomClass"]
 
@@ -133,11 +134,6 @@ class player:
                     self.addAction("igniting",len(self.perpetuated["douses"]))
                     #if(night_num == 3): # temporary or permanent removal for re-work
                     self.max_actions += 1
-            case 'Werewolf':
-                # *** needs to be variable by night
-                self.addAction("mauling",1)
-                self.addAction("stalking",1)
-                self.max_actions += 1
             # ***Exe
             #case 'Executioner':
                 #if(self.perpetuated["target"] is None): # Night 1, assign target
@@ -494,6 +490,15 @@ class craigClass (player): # I am contractually obligated to specify that Craig 
         # *** Need to add further stipulation about not transporting the target of a Mafia kill
         # because killing is lower on the priority list, I may check that as part of killing/arming? idk
         return 1
+    
+class werewolfClass (player): 
+    def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
+        super().__init__(player_name, player_num, role_name, night_num, perpetuated_element)
+        if night_num == 1 or night_num == 3:
+            self.addAction("stalking",1)
+        else:
+            self.addAction("mauling",1)
+        self.max_actions += 1
 
 necro_actions_dict = {
     "Medium" : ["disguising"],
