@@ -9,7 +9,7 @@ from global_def import startsWVowel
 __all__ = ["player", 
            "alchClass", "bodyguardClass", "docClass",
            "vigiClass", "medicClass", "veteranClass", 
-           "craigClass",
+           "mafiosoClass", "craigClass",
            "necroClass", 
            "doomClass"]
 
@@ -116,10 +116,6 @@ class player:
                     self.addAction("jailing")
                     self.addAction("executing")
                     self.max_actions = 2
-            case 'Mafioso':
-                if(self.perpetuated["shot"]):
-                    self.addAction("killing")
-                    self.max_actions += 1
             case 'Janitor':
                 if (self.perpetuated["cleans"] > 0):
                     self.addAction("cleaning")
@@ -463,6 +459,16 @@ class vigiClass (player):
                     return 0
     
             return 1 
+
+class mafiosoClass (player):
+    def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
+        super().__init__(player_name, player_num, role_name, night_num, perpetuated_element)
+        if(self.perpetuated["shot"]):
+            self.addAction("killing")
+            self.max_actions += 1
+
+    def act(self, action_obj):
+        self.perpetuated["shot"] = 0 # *** needs to restore on failure
 
 class craigClass (player): # I am contractually obligated to specify that Craig means Shapeshifter.
     def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
