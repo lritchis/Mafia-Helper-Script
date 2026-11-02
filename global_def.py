@@ -456,7 +456,7 @@ role_class_dict = {
 
     "Janitor" : {"actions" : [],
                 "faction" : "Mafia",
-                "perpetuated" : {"cleans" : 3}
+                "perpetuated" : {"cleans" : 3, "cleans_on" : set()}
     },
 
     "Mafioso" : {"actions" : [],
