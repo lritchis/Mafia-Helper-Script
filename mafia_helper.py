@@ -352,6 +352,8 @@ class game:
                             self.updateKillDicts(action_obj, self.defenses_dict)
                         case 'saving':
                             self.updateKillDicts(action_obj, self.defenses_dict)
+                        case 'self-saving':
+                            self.updateKillDicts(action_obj, self.defenses_dict)
                         case 'vesting': 
                             action_obj.player.vesting = 1
                             #self.updateKillDicts(action_obj.player.player_num, action_obj, self.defenses_dict)
@@ -619,6 +621,7 @@ class game:
 
     def processVisit(self, action_obj):
         # *** Trap and hallow still need to be integrated into f'n to process transports and cancels
+        action_obj.targets_player_num = action_obj.targets.copy
         for i in range(len(action_obj.targets)):
             action_obj.targets[i] = self.getTargetPlayer(action_obj.targets[i])
             action_obj.targets[i].visitors.append(action_obj.player) 
