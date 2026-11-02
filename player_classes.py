@@ -9,7 +9,7 @@ from global_def import startsWVowel
 __all__ = ["player", 
            "alchClass", "bodyguardClass", "docClass",
            "vigiClass", "medicClass", "veteranClass", 
-           "mafiosoClass", "craigClass",
+           "janitorClass", "mafiosoClass", "craigClass",
            "werewolfClass",
            "necroClass", 
            "doomClass"]
@@ -117,12 +117,6 @@ class player:
                     self.addAction("jailing")
                     self.addAction("executing")
                     self.max_actions = 2
-            case 'Janitor':
-                if (self.perpetuated["cleans"] > 0):
-                    self.addAction("cleaning")
-                    self.max_actions += 1
-            #case 'Shapeshifter':
-                # *** need some manner of tracking the loss of action
             case 'Arsonist':
                 if(self.perpetuated["first_douse"]):
                     self.addAction("dousing",2)
@@ -134,9 +128,6 @@ class player:
                     self.addAction("igniting",len(self.perpetuated["douses"]))
                     #if(night_num == 3): # temporary or permanent removal for re-work
                     self.max_actions += 1
-            # ***Exe
-            #case 'Executioner':
-                #if(self.perpetuated["target"] is None): # Night 1, assign target
             case 'Jester':
                 if night_num == 1:
                     self.addAction("vesting")
@@ -455,6 +446,17 @@ class vigiClass (player):
                     return 0
     
             return 1 
+    
+class janitorClass (player):
+    def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
+        super().__init__(player_name, player_num, role_name, night_num, perpetuated_element)
+        if (self.perpetuated["cleans"] > 0):
+            self.addAction("cleaning")
+            self.max_actions += 1
+
+    def act(self, action_obj):
+        self.perpetuated["cleans"] -= 1
+        self.perpetuated["cleans_on"].add(action_obj.targets[0].player_num)
 
 class mafiosoClass (player):
     def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
