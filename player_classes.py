@@ -44,7 +44,7 @@ class player:
         self.blackmailed = 0
         self.blocked = 0 
         self.controlled = 0
-        self.hallowed = 0
+        self.hallowing = 0 # *** name is weird, idc about that so much, but this may not need to be set unless it actually happens
         self.immunities = []
         self.jailed = 0
         self.night_immunity = 0
@@ -324,6 +324,14 @@ class alchClass (player): # *** class not tested
                                 sys.exit("Error in alchClass.act: " + target.player_name + " already has a potion from " + self.player_name + ".")
                         else:
                             sys.exit("Error in alchClass.act: " + self.player_name + " attempting to give potion to self.")
+
+# Medium stuff
+# *** this actually needs to be wrapped up in the blocking/controlling resolution, but it's fine for now
+    #if action_obj.targets[0] == action_obj.player:
+    #    if action_obj.player.perpetuated["self-hallow"]:
+    #        action_obj.player.perpetuated["self-hallow"] = 0
+    #    else:
+    #        sys.exit("Error, indicated self-hallow when unavailable.")
 
 class bodyguardClass (player): 
     def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
