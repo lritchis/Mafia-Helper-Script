@@ -44,7 +44,7 @@ class player:
         self.blackmailed = 0
         self.blocked = 0 
         self.controlled = 0
-        self.hallowing = 0 # *** name is weird, idc about that so much, but this may not need to be set unless it actually happens
+        self.hallowed = 0 # *** name is weird, idc about that so much, but this may not need to be set unless it actually
         self.immunities = []
         self.jailed = 0
         self.night_immunity = 0
