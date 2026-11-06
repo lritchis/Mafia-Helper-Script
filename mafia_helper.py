@@ -113,7 +113,7 @@ class game:
             if (role_class_dict[role_name]["faction"] == "Town"):
                 self.num_town += 1
 
-            match (role_name): # *** We can probably make a more efficient check here to avoid checking against all cases every time
+            match (role_name): # *** Need to make this a map
                 case "Alchemist":
                     player_obj = alchClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
                 case "Bodyguard": 
@@ -195,21 +195,22 @@ class game:
                 for action_option in player.action_keywords[1:]:
                     all_actions_regex = all_actions_regex + r"|" + action_option
 
+            # *** this is very finnicky and could likely be cleaned up considerably
             while(action_text != ""):
                 found = 0
                 for option_num in range(len(player.action_keywords)): 
-                    current_action_regex = r"\A\s"+player.action_keywords[option_num]+r"(\s|$)"
+                    current_action_regex = r"\A\s("+player.action_keywords[option_num]+r")(\s|$)?"
                     action_found = re.search(current_action_regex,action_text)
                     if(action_found): # \s needed so we are finding standalone keywords 
                         action_text = re.sub(action_found.group(), "", action_text) # remove found action from text
-                        current_action = re.sub(r"\A\s|\s\Z","",action_found.group())
+                        current_action = action_found.group(1) #re.sub(r"\A\s|\s\Z","",action_found.group(1))
                         attempted_actions = attempted_actions + 1
                         found = 1 # *** can probably remove a variable here. too lazy rn
                         
                         if attempted_actions > player.max_actions:
                             sys.exit("Error, too many actions attempted for " + player.player_name)
-                        
-                        if(re.search(r".+\s(" + all_actions_regex + r")\s",action_text)): # there is at least one more action
+
+                        if(re.search(r"\s(" + all_actions_regex + r")\s",action_text)): # there is at least one more action
                             targetting_text = re.sub(r",\s(" + all_actions_regex + r").+", "", action_text) # remove the next action and everything after
                             action_text = re.sub(r"\A" + targetting_text + ",","",action_text)
                         else:
@@ -255,7 +256,7 @@ class game:
             "alerting" : self.setActionAttribute,
             "transporting" : self.findResolutionObj,
             "resolve_transporting" : self.resolveTransports,
-            "hallowing" : self.setActionAttribute,
+            "hallowing" : self.resolveHallow,
             "controlling" : self.resolveControl,
             "blocking" : self.resolveBlock,
             "disguising" : self.findResolutionObj,
@@ -499,7 +500,7 @@ class game:
             # *** note hallow not currently cancelling the visit
             if "hallow_cancels" in action_dict[action_obj.action]:
                 for target in action_obj.targets:
-                    if getattr(target, "hallowing", 0):
+                    if getattr(target, "hallowed", 0):
                         action_obj.player.notifications.append("Your " + action_obj.action + " was blocked by the Medium's hallow!")
                         action_obj.cancelled = 1
 
@@ -664,7 +665,7 @@ class game:
 
     def setActionAttribute(self, action_obj):
     # catch for actions (alerting, vesting) that just flip an attribute in the player class object
-        setattr(action_obj.targets[0], action_obj.action, 1)
+        setattr(action_obj.player, action_obj.action, 1)
         return 1
 
     def resolveWiretap(self, action_obj):
@@ -708,6 +709,9 @@ class game:
             sys.exit("Error, Retributionist cannot revive a living player. (" + 
                         action_obj.player.player_name + " reviving " + target.player_name + ")")
         return 1
+
+    def resolveHallow(self, action_obj):
+        action_obj.targets[0].hallowed = 1
     
     def resolveControl(self, action_obj):
         # *** does not actually implement a control
