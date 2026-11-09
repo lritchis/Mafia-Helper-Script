@@ -69,13 +69,28 @@ class game:
                 sys.exit("Error, no valid role category detected in: " + current_line) 
     
     def parseGameTree(self, status_file,vote_target = None):
+        player_class_map = {
+            "Alchemist" : alchClass,             
+            "Bodyguard" : bodyguardClass,
+            "Doctor" : docClass,
+            "Vigilante" : vigiClass,
+            "Medic" : medicClass,
+            "Veteran" : veteranClass,
+            "Janitor" : janitorClass,
+            "Mafioso" : mafiosoClass,
+            "Shapeshifter" : craigClass,
+            "Werewolf" : werewolfClass,
+            "Necromancer" : necroClass,
+            "Doomsayer" : doomClass
+        }
+
         gameTree = ET.parse(status_file)
         gameRoot = gameTree.getroot()
         self.filename = gameRoot.tag
         
         self.categories = []
         self.players = []
-        self.notify_for_deaths = [] # list to hold Amnesiacs and Necromancers that learn information for every death
+        self.notify_for_deaths = set() # set to hold Amnesiacs and Necromancers that learn information for every death
         # will add 1 for every Townie found. Compared to a logical condition for finding the last Townie this is easier and should be just as efficient
         self.num_town = 0 
         self.living_medium = 0
@@ -113,34 +128,9 @@ class game:
             if (role_class_dict[role_name]["faction"] == "Town"):
                 self.num_town += 1
 
-            match (role_name): # *** Need to make this a map
-                case "Alchemist":
-                    player_obj = alchClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
-                case "Bodyguard": 
-                    player_obj = bodyguardClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
-                case "Doctor": 
-                    player_obj = docClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
-                case "Vigilante":
-                    player_obj = vigiClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
-                case "Medic":
-                    player_obj = medicClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
-                case "Veteran":
-                    player_obj = veteranClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
-                case "Janitor":
-                    player_obj = janitorClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
-                case "Mafioso":
-                    player_obj = mafiosoClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
-                case "Shapeshifter":
-                    player_obj = craigClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
-                case "Werewolf":
-                    player_obj = werewolfClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
-                case "Necromancer":
-                    player_obj = necroClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
-                    self.notify_for_deaths.append(player_obj)
-                case "Doomsayer":
-                    player_obj = doomClass(player_name, player_num, role_name, self.night_num, perpetuated_element)
-                case _:
-                    player_obj = player(player_name, player_num, role_name, self.night_num, perpetuated_element)
+            player_obj = player_class_map.get(role_name, player)(player_name, player_num, role_name, self.night_num, perpetuated_element)
+            if (role_name == "Necromancer") or (role_name == "Amnesiac"):
+                self.notify_for_deaths.add(player_obj)
 
             self.players.append(player_obj)
             self.categories.append(roleSlot(slot_name, role_name))
@@ -276,9 +266,13 @@ class game:
             "saving" : self.updateKillDicts,
             "self-saving" : self.updateKillDicts,
             "vesting" : self.setActionAttribute,
-            "watching" : self.resolveObserve,
-            "tracking" : self.resolveObserve,
-            "stalking" : self.resolveObserve,
+            "watching" : self.queueResolution,
+            "tracking" : self.queueResolution,
+            "stalking" : self.queueResolution,
+            #"watching" : self.resolveObserve,
+            #"tracking" : self.resolveObserve,
+            #"stalking" : self.resolveObserve,
+            "resolve_observing" : self.resolveObserve,
             "determineVisits" : self.determineVisits
         } 
 
@@ -540,20 +534,119 @@ class game:
     
         return 1
 
-    def resolveObserve(self, action_obj): # *** needs so much work lol
-        if self.observing is None:
-            self.observing = actionObject("determineVisits", [action_obj.player], targets = [action_obj.targets[0]])
-            self.observing.priority.append(action_obj.priority)
-            self.action_queue.append(self.observing)
-        else:
-            for remaining_action in self.action_queue: # *** this needs thorough testing
-                if  remaining_action.action == "determineVisits":
-                    remaining_action.priority.append(action_obj.priority)
-                    remaining_action.player.append(action_obj.player)
-                    remaining_action.targets.append(action_obj.targets[0])
-                    break
+    def resolveObserve(self, action_obj):
+        night_visits = {}
+        determined_night_visits = {} # I believe this could be made more memory efficient by not using 
+        # determined_night_visits and removing from night_visits once a determination has been made
+        # idk about speed efficiency. also idc that much probably
+        obs_dict =  self.resolution_dict[action_obj.action]
 
-        return 1
+        for player_num in obs_dict:
+            for action_type in obs_dict[player_num].actions:
+                for action_obj in obs_dict[player_num].actions[action_type]:
+                    if ((action_obj.priority == action_dict["watching"]["priority"])  # Lookout stuff
+                        | (action_obj.priority == action_dict["stalking"]["priority"])):
+                        visitors = action_obj.targets[0].visitors.copy()
+                        visitors.remove(self.players[action_obj.player.player_num]) # remove person acting from visit list
+
+                        num_visitors = len(visitors)
+                        if num_visitors == 0:
+                            result = "wasn't visited by anyone" # *** need to check this phrasing
+                        elif num_visitors == 1:
+                            result = "was visited by " + self.getPlayerAppearance(visitors[0], "name")
+                        else:
+                            result = "was visited by"
+                            for visitor_ind in range(num_visitors):
+                                if visitor_ind == (num_visitors - 1):
+                                    result = result + " and " + self.getPlayerAppearance(visitors[visitor_ind], "name")
+                                else:
+                                    result = result + " " + self.getPlayerAppearance(visitors[visitor_ind], "name") 
+                                    if num_visitors > 2:
+                                        result = result + ","
+                        
+                        result = "Your target " + result + "!"
+                        action_obj.player.notifications.append(result)
+
+                    if ((action_obj.priority == action_dict["tracking"]["priority"]) # tracker stuff
+                        | (action_obj.priority == action_dict["stalking"]["priority"])): 
+                        if not (night_visits):
+                            # construct dict of all night visits with the visitor's player_num as the key and the 
+                            # visited players' player_num in a list as the value
+                            # *** I could start buidling this in the Lookout results to save time ig? idk. not pressing
+                            for player in self.players:
+                                for visitor in player.visitors:
+                                    night_visits.setdefault(visitor.player_num, []).append(player.player_num)  
+                            all_visits = [visit for visitor in list(night_visits.values()) for visit in visitor]
+
+                            # this section can be un-commented to debug the list of all visits for the night
+                            #all_visitors = []
+                            #for visitor in night_visits.keys():
+                            #    for num_visits in range(len(night_visits[visitor])):
+                            #        all_visitors.append(visitor)
+                            #print(all_visitors)
+                            #for visit_ind, visitor in enumerate(all_visitors):
+                                #print(self.players[visitor].player_name + " to " + self.players[all_visits[visit_ind]].player_name)
+
+                        tracked_target = self.getPlayerAppearance(action_obj.targets[0]) # disguises swap who is effectively being tracked
+                        
+                        # obtain "result" where result is the player_num of the player that the target is tracked to
+                        if(tracked_target.player_num in determined_night_visits):
+                            result = determined_night_visits[tracked_target.player_num]
+
+                        else:
+                            if (tracked_target.player_num in night_visits): # case where the apparent target did make a visit
+                                if (len(night_visits[tracked_target.player_num]) == 1):
+                                    result = night_visits[tracked_target.player_num][0]
+                                
+                                else: # (len(night_visits[tracked_target.player_num]) > 1)
+                                    result = r.choice(night_visits[tracked_target.player_num]) # randomly determine which visit the Tracker sees
+                                    determined_night_visits[tracked_target.player_num] = result # once a target has been randomly determined, any
+                                    # tracks should return the same result
+
+                                    # *** can implement functionality for evil players choosing their tracked target here
+                                    indet_string = ("Random Tracker results for " + action_obj.player.player_name
+                                        + " tracking " + action_obj.targets[0].player_name 
+                                        + ", " + self.players[result].player_name 
+                                        + " chosen. (Options: " + self.players[result].player_name
+                                    )
+                                    
+                                    for visit in night_visits[tracked_target.player_num]:
+                                        if visit != result:
+                                            indet_string += ", " + self.players[visit].player_name
+                                    indet_string += ")"
+                                    self.indeterminant.append(indet_string) # tell Narrator that an indeterminancy occured
+                            
+                            else: # if the apparent target did not visit, pull randomly from all the night's visits
+                                result = r.choice(all_visits)
+                                determined_night_visits[tracked_target.player_num] = result
+                                
+                                indet_string = ("Random Tracker results for " + action_obj.player.player_name
+                                        + " tracking " + action_obj.targets[0].player_name 
+                                        + ", " + self.players[result].player_name 
+                                        + " chosen from list of all visits tonight. (" + str(len(all_visits)) + " total)"
+                                        )
+                                self.indeterminant.append(indet_string)
+
+                        action_obj.player.notifications.append("Your target visited " + self.players[result].player_name + "!")
+                        if(action_obj.targets[0].faction >= faction_dict["Mafia"]):
+                            action_obj.targets[0].notifications.append("You were tracked! They saw you visit "
+                                + self.players[result].player_name + ".")
+        return 1  
+
+    #def resolveObserve(self, action_obj): # *** needs so much work lol
+    #    if self.observing is None:
+    #        self.observing = actionObject("determineVisits", [action_obj.player], targets = [action_obj.targets[0]])
+    #        self.observing.priority.append(action_obj.priority)
+    #        self.action_queue.append(self.observing)
+    #    else:
+    #        for remaining_action in self.action_queue: # *** this needs thorough testing
+    #            if  remaining_action.action == "determineVisits":
+    #                remaining_action.priority.append(action_obj.priority)
+    #                remaining_action.player.append(action_obj.player)
+    #                remaining_action.targets.append(action_obj.targets[0])
+    #                break
+
+    #    return 1
 
     def killPlayer(self, player_num, death_source):
         if death_source.action in death_message_dict:
@@ -622,24 +715,30 @@ class game:
 
     ## Helper Functions for Game Class
     def queueResolution(self, action_obj):
-        if action_obj.action in self.res_name_map:
-            res_obj_action = "resolve_" + self.res_name_map[action_obj.action]
+        if action_obj.action in res_name_map:
+            res_obj_action = "resolve_" + res_name_map[action_obj.action]
         else:
             res_obj_action = "resolve_" + action_obj.action
-        
-        # *** I still want to go through this and potentially improve it
-        if res_obj_action in self.resolution_dict:
-            self.resolution_dict[res_obj_action].player.append(action_obj.player)
-            self.resolution_dict[res_obj_action].targets.append(action_obj.targets)
 
-        else:
+        if res_obj_action not in self.resolution_dict:
+            self.resolution_dict[res_obj_action] = {}
+
+            # *** This just seems poorly executed. idk how to do it better, though. While loop maybe?
             queue_len = len(self.action_queue)
+            end_of_queue = 1
             if queue_len > 1:
                 for queue_ind, remaining_action in enumerate(self.action_queue[1:]):
-                    if remaining_action.priority > action_dict["resolve_" + action_obj.action]["priority"]:
+                    if remaining_action.priority > action_dict[res_obj_action]["priority"]:
+                        end_of_queue = 0
                         break
-            
-                self.action_queue.insert(queue_ind + 1, actionObject(res_obj_action, [action_obj.player], [action_obj.targets]))
+                queue_ind += end_of_queue + 1 # end_of_queue is 1 when we're placing at res at end of action queue. +1 for starting offset in for loop
+            else:
+                queue_ind = 1
+            self.action_queue.insert(queue_ind, actionObject(res_obj_action))
+
+        for target in action_obj.targets:
+            self.resolution_dict[res_obj_action].setdefault(target.player_num, resObject(target.player_num))
+            self.resolution_dict[res_obj_action][target.player_num].addAction(action_obj)
 
     # *** the resolution_exists thing is weird
     def findResolutionObj(self, action_obj, resolution_exists = 0): # *** need to go back and use this for BM and such. plus target_inds usage change
@@ -742,7 +841,7 @@ class game:
         print("***Needs implemented")
         return 1
 
-    def resolveDouse (action_obj):
+    def resolveDouse (self, action_obj):
         # *** this line outdated
         action_obj.player.perpetuated["first_douse"] = 0 # no need to check if it's 1, just assign it to 0
     
@@ -1217,7 +1316,7 @@ class resObject:
         self.state = -1 # set uninitialized state to -1
         self.actions = {}
 
-    def add_action(self, action_to_add):
+    def addAction(self, action_to_add):
         action_type = action_to_add.action
         if action_type in self.actions:
             self.actions[action_type].append(action_to_add)
