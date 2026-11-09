@@ -370,7 +370,7 @@ role_class_dict = {
                 "faction" : "Town"
     },
 
-    "Alchemist" : {"actions" : ["delivering to"],
+    "Alchemist" : {"actions" : [],
                 "faction" : "Town",
                 "perpetuated" : {"delivered_potions" : set()}
     },
@@ -535,3 +535,12 @@ res_name_map = {
     "watching" : "observing",
     "stalking" : "observing"
 }
+
+#queued_name_map = {
+#    "transporting" : "paradoxes",
+#    "self-trapping" : "paradoxes",
+#    "controlling" : "paradoxes",
+#    "blocking" : "paradoxes",
+#    "hallowing" : "paradoxes",
+#    "trapping" : "paradoxes"
+#}
