@@ -355,7 +355,7 @@ class docClass (player):
     def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
         super().__init__(player_name, player_num, role_name, night_num, perpetuated_element)
 
-        if self.perpetuated["self-saving"]:
+        if self.perpetuated["self-save"]:
             self.addAction("self-saving")
 
     def act(self, action_obj):
@@ -526,7 +526,8 @@ necro_actions_dict = {
     "Werewolf" : ["stalking"],
     "Amnesiac" : ["transporting"],
     "Doomsayer" : ["transporting"],
-    "Jester" : ["transporting"]
+    "Jester" : ["transporting"],
+    "Janitor" : ["cleaning"] # ***
 }
 
 class necroClass (player):
