@@ -217,7 +217,11 @@ action_dict = {
                          "is_visit" : 0,
                          "targeted" : 0
     },
-    "executing" : {"priority" : 27,
+    "resolve_attacking" : {"priority" : 27, # *** just do auto priority already lol
+                     "is_visit" : 0,
+                     "targeted" : 0
+    },
+    "executing" : {"priority" : 27.5,
                      "is_visit" : 0,
                      "targeted" : 0
     },
@@ -299,7 +303,8 @@ atk_flags = {
     "counterattacking" : 0b001,
     "shooting" : 0b111,
     "stabbing" : 0b110,
-    "mauling" : 0b100
+    "mauling" : 0b100,
+    "mauling_visitor" : 0b100
 }
 
 # *** vesting should not be a defense state, the action should create a night immune attribute
@@ -536,6 +541,12 @@ res_name_map = {
     "stalking" : "observing"
 }
 
+for atk in atk_actions:
+    res_name_map[atk] = "attacking"
+
+for defense in defense_actions:
+    res_name_map[defense] = "defending"
+    
 #queued_name_map = {
 #    "transporting" : "paradoxes",
 #    "self-trapping" : "paradoxes",
