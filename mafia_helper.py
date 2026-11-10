@@ -256,22 +256,20 @@ class game:
             "blackmailing" : self.resolveBlackmail,
             "investigating" : self.resolveInvestigate,
             "checking" : self.resolveCheck,
-            "shooting" : self.updateKillDicts,
-            "killing" : self.updateKillDicts,
+            "shooting" : self.queueResolution,
+            "killing" : self.queueResolution,
             "cleaning" : self.resolveClean,
-            "mauling" : self.updateKillDicts,
-            "stabbing" : self.updateKillDicts,
+            "mauling" : self.queueResolution,
+            "stabbing" : self.queueResolution,
             "delivering to" : self.resolveDeliver,
-            "protecting" : self.updateKillDicts,
-            "saving" : self.updateKillDicts,
-            "self-saving" : self.updateKillDicts,
+            "protecting" : self.queueResolution,
+            "saving" : self.queueResolution,
+            "self-saving" : self.queueResolution,
             "vesting" : self.setActionAttribute,
+            "resolve_attacking" : self.resolveAttacks,
             "watching" : self.queueResolution,
             "tracking" : self.queueResolution,
             "stalking" : self.queueResolution,
-            #"watching" : self.resolveObserve,
-            #"tracking" : self.resolveObserve,
-            #"stalking" : self.resolveObserve,
             "resolve_observing" : self.resolveObserve,
             "determineVisits" : self.determineVisits
         } 
@@ -280,8 +278,6 @@ class game:
         self.death_announcements = {}
         self.narrator_announcements = []
         self.indeterminant = []
-        self.atks_dict = {}
-        self.defenses_dict = {}
 
         # *** I think targetting is screwed up because of the player_locations list now being a copy. That should just be made a list with player nums
         # action queue pre-processing
@@ -327,133 +323,18 @@ class game:
                     action_eval_map.get(action_obj.action, self.nullResolution)(action_obj)
                         
             self.action_queue.pop(0)
-
-        # *** TO-DO here:
-        #       -add indeterminancy info
-        #       -add BG/Arso interaction
-        #       -add BG/Mafioso interaction
-        #       -add vest/shield/jail functionality
-        #       -fix WW "you attacked someone!"
-        #       -add WW immunity flag?
-        if (self.atks_dict): # *** need to 
-            # *** debug code
-            #for player_num in self.atks_dict:
-                #print(player_num)
-                #for atk_type in self.atks_dict[player_num].actions:
-                    #print(atk_type)
-
-            attacked_players_list = [player_num for player_num in self.atks_dict]
-            for player_num in attacked_players_list:
-                if player_num in self.defenses_dict:
-                    if "protecting" in self.defenses_dict[player_num].actions:
-                        if player_num in self.atks_dict:
-                            if "dousing" not in self.atks_dict[player_num].actions: # *** make this the else statement later. Need to add Arso 
-                                # *** might do this further up idk
-                                atk_state = self.atks_dict[player_num].determineState(from_start = 1, direct_only = 1)
-                                self.defenses_dict[player_num].determineState(from_start = 1, skip_bg = 0)
-
-                                # I might re-write this as conditional on atk_state but idk that it matters either way
-                                while (self.atks_dict[player_num].state < num_atk_states) and (self.defenses_dict[player_num].actions["protecting"]):
-                                    defense_obj = self.defenses_dict[player_num].getAction()
-                                    attack_obj = self.atks_dict[player_num].getAction()
-
-                                    self.updateKillDicts(actionObject("sacrificing", defense_obj.player, [defense_obj.player]))
-                                    self.updateKillDicts(actionObject("counterattacking", defense_obj.player, [attack_obj.player]))
-
-                                    self.getTargetPlayer(defense_obj.targets[0]).notifications.append("You were protected by a Bodyguard!")
-
-                                    self.atks_dict[player_num].actions[atk_state].pop(0)
-                                    self.defenses_dict[player_num].actions["protecting"].pop(0)
-
-                                    if (not self.atks_dict[player_num].actions[atk_state]): # exhausted actions in this atk state, list empty
-                                        del self.atks_dict[player_num].actions[atk_state]
-                                        atk_state = self.atks_dict[player_num].determineState(from_start = 1, direct_only = 1)
-                                
-                                if not self.atks_dict[player_num]: # *** remove empty entry. Needs testing
-                                    del self.atks_dict[player_num]
-
-                if "mauling" in self.atks_dict[player_num].actions: # this means Bodyguard did not line up on a maul, since it'd be removed
-                    for visitor in self.players[player_num].visitors:
-                        for maul in self.atks_dict[player_num].actions["mauling"]:
-                            if visitor != maul.player:
-                                self.updateKillDicts(actionObject("mauling_visitor", maul.player, [visitor]))
-                                # *** "You attacked someone!"" should go here?
-            # *** I think the inner loops can be written as a function for both bg and the general case, and will add stuff for bg?
-            attacked_players_list = [player_num for player_num in self.atks_dict] 
-            for player_num in attacked_players_list:
-                atk_state = self.atks_dict[player_num].determineState(from_start = 1)
-                
-                if player_num in self.defenses_dict:
-                    defense_state = self.defenses_dict[player_num].determineState(from_start = 1, skip_bg = 1)
-                else:
-                    defense_state = None
-
-                while (self.atks_dict[player_num].state < num_atk_states):
-                    if defense_state: # using the state condition prevents issues like inapplicable BGs from being an issue
-                        defense_obj = self.defenses_dict[player_num].getAction()
-                        attack_obj = self.atks_dict[player_num].getAction()
-
-                        defense_state = self.resolveAtkDefense(attack_obj, atk_state, defense_obj, defense_state, player_num)
-
-                    else:
-                        attack_obj = self.atks_dict[player_num].getAction()
-                        attacked_player = self.players[player_num]
-                        # cases:
-                        # Night Immunity, vesting, shields
-                        if getattr(attacked_player, "vesting", 0) and (atk_flags[attack_obj.action] & 0b010):
-                            attacked_player.notifications.append("Someone tried to attack you but you were protected by your vest!")
-                            self.players[attack_obj.player.player_num].notifications.append("Your attack failed!")
-                        elif attacked_player.night_immune and (atk_flags[attack_obj.action] & 0b010):
-                            attacked_player.notifications.append("Someone tried to attack you but you were protected by you are immune!")
-                            self.players[attack_obj.player.player_num].notifications.append("Your attack failed!")
-                        elif (attacked_player.perpetuated.get("shield", 0) and not 
-                            (role_class_dict[attacked_player.role_name]["faction"] == faction_dict["NE"] and (atk_flags[attack_obj.action] & 0b1))):
-                            attacked_player.notifications.append("Someone tried to attack you but they broke your shield instead!")
-                            attacked_player.perpetuated["shield"] = 0
-                            if attack_obj.action != "mauling": # mauling should be the only attack that gets to here and doesn't get "Your attack failed!" but needs testing
-                                self.players[attack_obj.player.player_num].notifications.append("Your attack failed!") 
-                        
-                        else:
-                            # *** TO-DO: Technically need to make this optional
-                            if attack_obj.action == "stabbing":
-                                self.players[player_num].cleaned = 1
-                            self.killPlayer(player_num, attack_obj)
-
-                            # *** needs all the logic surrounding disguises and cleans. Also need to figure out announcement order.
-                            if(self.players[player_num].role_name == "Retributionist"):
-                                if self.players[player_num].actions:
-                                    rev_player_num = self.players[player_num].actions[0].targets[0]
-                                    self.players[rev_player_num].perpetuated["living_status"] = 1
-                                    self.narrator_announcements.append(self.players[rev_player_num].player_name + " WAS REVIVED BY THE RETRIBUTIONIST!")
-                        
-                        if (attack_obj.action == "mauling") | (attack_obj.action == "mauling_visitor") | (attack_obj.action == "alerting"):
-                            # *** can be made better I think
-                            self.players[attack_obj.player.player_num].notifications.append("You attacked someone!")
-
-                    self.atks_dict[player_num].actions[atk_state].pop(0)
-                    if (not self.atks_dict[player_num].actions[atk_state]): # exhausted actions in this atk state, list empty
-                        del self.atks_dict[player_num].actions[atk_state]
-                        atk_state = self.atks_dict[player_num].determineState(from_start = 1)
-
-                # We could remove entry from attacked list here if there were a reason to do that
-
-            # *** debug code
-            #print("After")
-            #for player_num in self.atks_dict:
-            #    print(player_num)
-            #    for atk_type in self.atks_dict[player_num].actions:
-            #        print(atk_type)  
-    def resolveAtkDefense(self, attack_obj, atk_state, defense_obj, defense_state, player_num):
+  
+    def resolveAtkDefense(self, attack_obj, atk_state, defenses_dict, defense_obj, defense_state, player_num):
         # *** Update to distinguish between cases
         self.players[player_num].notifications.append("Someone tried to attack you, but you were saved!")
         self.players[defense_obj.player.player_num].notifications.append("Someone tried to attack [TARGET] but you saved them!")
         self.players[attack_obj.player.player_num].notifications.append("Your attack failed!")
 
-        self.defenses_dict[player_num].actions[defense_state].pop(0)
+        defenses_dict[player_num].actions[defense_state].pop(0)
 
-        if (not self.defenses_dict[player_num].actions[defense_state]): # exhausted actions in this atk state, list empty
-            del self.defenses_dict[player_num].actions[defense_state]
-            defense_state = self.defenses_dict[player_num].determineState(from_start = 1, skip_bg = 1)
+        if (not defenses_dict[player_num].actions[defense_state]): # exhausted actions in this atk state, list empty
+            del defenses_dict[player_num].actions[defense_state]
+            defense_state = defenses_dict[player_num].determineState(from_start = 1, skip_bg = 1)
 
         return defense_state
 
@@ -468,7 +349,7 @@ class game:
             if getattr(target, "alerting", 0): # *** this needs to be tested
                 # *** I think this has issues cancelling multi-target actions # I doh't think this should be an issue anymore but not tested
                 # an alerting player can never be transported, so using self.players list directly
-                self.updateKillDicts(actionObject("alerting", target, [action_obj.player]))
+                self.queueResolution(actionObject("alerting", target, [action_obj.player]))
                 action_obj.cancelled = 1
                 return 1
                       
@@ -479,7 +360,7 @@ class game:
                         if(action_obj.player.player_num in trapper.perpetuated["traps_landed"]):
                             trapper.perpetuated["traps_landed"].remove(action_obj.player.player_num)
                             trapper.perpetuated["num_traps"] = 1
-                            self.updateKillDicts(actionObject("trapping_atk", trapper, [action_obj.player]))
+                            self.queueResolution(actionObject("trapping_atk", trapper, [action_obj.player]))
                             trapper.notifications.append("Your trap on " + target.player_name + " attacked someone!") # *** need to sort out, probably
                                 # *** Need to cancel action (not implemented properly) # idk if this is still true
                             action_obj.cancelled = 1
@@ -509,30 +390,6 @@ class game:
         print("No f'n associated with action: " + action_obj.action) # *** for testing, probably remove
 
         return 0
-    
-    def updateKillDicts(self, action_obj):
-        # there might be more efficient logic here, rn it adds the affected_player_num to the dict if it 
-        # isn't there and then checks against the particular action being in the dict
-        if action_obj.action in atk_state_map: # ***
-            update_dict = self.atks_dict
-        else:
-            update_dict = self.defenses_dict
-        
-        affected_player_num = action_obj.targets[0].player_num
-        if affected_player_num not in update_dict:
-            if update_dict is self.atks_dict:
-                update_dict[affected_player_num] = atkResObject(affected_player_num)
-            elif update_dict is self.defenses_dict:
-                update_dict[affected_player_num] = defenseResObject(affected_player_num)
-            else:
-                sys.exit("Invalid update dict provided for f'n updateKillDicts")
-
-        if action_obj.action in update_dict[affected_player_num].actions:
-            update_dict[affected_player_num].actions[action_obj.action].append(action_obj)
-        else:
-            update_dict[affected_player_num].actions[action_obj.action] = [action_obj]
-    
-        return 1
 
     def resolveObserve(self, action_obj):
         night_visits = {}
@@ -724,20 +581,21 @@ class game:
             self.resolution_dict[res_obj_action] = {}
 
             # *** This just seems poorly executed. idk how to do it better, though. While loop maybe?
-            queue_len = len(self.action_queue)
-            end_of_queue = 1
-            if queue_len > 1:
-                for queue_ind, remaining_action in enumerate(self.action_queue[1:]):
-                    if remaining_action.priority > action_dict[res_obj_action]["priority"]:
-                        end_of_queue = 0
-                        break
-                queue_ind += end_of_queue + 1 # end_of_queue is 1 when we're placing at res at end of action queue. +1 for starting offset in for loop
-            else:
-                queue_ind = 1
-            self.action_queue.insert(queue_ind, actionObject(res_obj_action))
+            if res_obj_action in action_dict:
+                queue_len = len(self.action_queue)
+                end_of_queue = 1
+                if queue_len > 1:
+                    for queue_ind, remaining_action in enumerate(self.action_queue[1:]):
+                        if remaining_action.priority > action_dict[res_obj_action]["priority"]:
+                            end_of_queue = 0
+                            break
+                    queue_ind += end_of_queue + 1 # end_of_queue is 1 when we're placing at res at end of action queue. +1 for starting offset in for loop
+                else:
+                    queue_ind = 1
+                self.action_queue.insert(queue_ind, actionObject(res_obj_action))
 
         for target in action_obj.targets:
-            self.resolution_dict[res_obj_action].setdefault(target.player_num, resObject(target.player_num))
+            self.resolution_dict[res_obj_action].setdefault(target.player_num, res_obj_map.get(res_obj_action, resObject)(target.player_num))
             self.resolution_dict[res_obj_action][target.player_num].addAction(action_obj)
 
     # *** the resolution_exists thing is weird
@@ -926,6 +784,126 @@ class game:
 
         self.players[GF_ind].addAction("wiretapping", num_mafia_living)
         self.players[GF_ind].max_actions += 1
+
+    def resolveAttacks(self, action_obj):
+        # *** TO-DO here:
+        #       -add indeterminancy info
+        #       -add BG/Arso interaction
+        #       -add BG/Mafioso interaction
+        #       -add vest/shield/jail functionality
+        #       -fix WW "you attacked someone!"
+        #       -add WW immunity flag?
+        # *** debug code
+        #for player_num in self.atks_dict:
+            #print(player_num)
+            #for atk_type in self.atks_dict[player_num].actions:
+                #print(atk_type)
+        atks_dict = self.resolution_dict["resolve_attacking"]
+        defenses_dict = self.resolution_dict["resolve_defending"]
+
+        attacked_players_list = [player_num for player_num in atks_dict]
+        for player_num in attacked_players_list:
+            if player_num in defenses_dict:
+                if "protecting" in defenses_dict[player_num].actions:
+                    if player_num in atks_dict:
+                        if "dousing" not in atks_dict[player_num].actions: # *** make this the else statement later. Need to add Arso 
+                            # *** might do this further up idk
+                            atk_state = atks_dict[player_num].determineState(from_start = 1, direct_only = 1)
+                            defenses_dict[player_num].determineState(from_start = 1, skip_bg = 0)
+
+                            # I might re-write this as conditional on atk_state but idk that it matters either way
+                            while (atks_dict[player_num].state < num_atk_states) and (defenses_dict[player_num].actions["protecting"]):
+                                defense_obj = defenses_dict[player_num].getAction()
+                                attack_obj = atks_dict[player_num].getAction()
+
+                                self.queueResolution(actionObject("sacrificing", defense_obj.player, [defense_obj.player]))
+                                self.queueResolution(actionObject("counterattacking", defense_obj.player, [attack_obj.player]))
+
+                                defense_obj.targets[0].notifications.append("You were protected by a Bodyguard!")
+
+                                atks_dict[player_num].actions[atk_state].pop(0)
+                                defenses_dict[player_num].actions["protecting"].pop(0)
+
+                                if (not atks_dict[player_num].actions[atk_state]): # exhausted actions in this atk state, list empty
+                                    del atks_dict[player_num].actions[atk_state]
+                                    atk_state = atks_dict[player_num].determineState(from_start = 1, direct_only = 1)
+                            
+                            if not atks_dict[player_num]: # *** remove empty entry. Needs testing
+                                del atks_dict[player_num]
+
+            if "mauling" in atks_dict[player_num].actions: # this means Bodyguard did not line up on a maul, since it'd be removed
+                for visitor in self.players[player_num].visitors:
+                    for maul in atks_dict[player_num].actions["mauling"]:
+                        if visitor != maul.player:
+                            self.queueResolution(actionObject("mauling_visitor", maul.player, [visitor]))
+                            # *** "You attacked someone!"" should go here?
+        # *** I think the inner loops can be written as a function for both bg and the general case, and will add stuff for bg?
+        attacked_players_list = [player_num for player_num in atks_dict] 
+        for player_num in attacked_players_list:
+            atk_state = atks_dict[player_num].determineState(from_start = 1)
+            
+            if player_num in defenses_dict:
+                defense_state = defenses_dict[player_num].determineState(from_start = 1, skip_bg = 1)
+            else:
+                defense_state = None
+
+            while (atks_dict[player_num].state < num_atk_states):
+                if defense_state: # using the state condition prevents issues like inapplicable BGs from being an issue
+                    defense_obj = defenses_dict[player_num].getAction()
+                    attack_obj = atks_dict[player_num].getAction()
+
+                    defense_state = self.resolveAtkDefense(attack_obj, atk_state, defenses_dict, defense_obj, defense_state, player_num)
+
+                else:
+                    attack_obj = atks_dict[player_num].getAction()
+                    attacked_player = self.players[player_num]
+                    # cases:
+                    # Night Immunity, vesting, shields
+                    if getattr(attacked_player, "vesting", 0) and (atk_flags[attack_obj.action] & 0b010):
+                        attacked_player.notifications.append("Someone tried to attack you but you were protected by your vest!")
+                        self.players[attack_obj.player.player_num].notifications.append("Your attack failed!")
+                    elif attacked_player.night_immune and (atk_flags[attack_obj.action] & 0b010):
+                        attacked_player.notifications.append("Someone tried to attack you but you were protected by you are immune!")
+                        self.players[attack_obj.player.player_num].notifications.append("Your attack failed!")
+                    elif (attacked_player.perpetuated.get("shield", 0) and not 
+                        (role_class_dict[attacked_player.role_name]["faction"] == faction_dict["NE"] and (atk_flags[attack_obj.action] & 0b1))):
+                        attacked_player.notifications.append("Someone tried to attack you but they broke your shield instead!")
+                        attacked_player.perpetuated["shield"] = 0
+                        if attack_obj.action != "mauling": # mauling should be the only attack that gets to here and doesn't get "Your attack failed!" but needs testing
+                            self.players[attack_obj.player.player_num].notifications.append("Your attack failed!") 
+                    
+                    else:
+                        # *** TO-DO: Technically need to make this optional
+                        if attack_obj.action == "stabbing":
+                            self.players[player_num].cleaned = 1
+                        self.killPlayer(player_num, attack_obj)
+
+                        # *** needs all the logic surrounding disguises and cleans. Also need to figure out announcement order.
+                        if(self.players[player_num].role_name == "Retributionist"):
+                            if self.players[player_num].actions:
+                                rev_player_num = self.players[player_num].actions[0].targets[0]
+                                self.players[rev_player_num].perpetuated["living_status"] = 1
+                                self.narrator_announcements.append(self.players[rev_player_num].player_name + " WAS REVIVED BY THE RETRIBUTIONIST!")
+                    
+                    if (attack_obj.action == "mauling") | (attack_obj.action == "mauling_visitor") | (attack_obj.action == "alerting"):
+                        # *** can be made better I think
+                        self.players[attack_obj.player.player_num].notifications.append("You attacked someone!")
+
+                atks_dict[player_num].actions[atk_state].pop(0)
+                if (not atks_dict[player_num].actions[atk_state]): # exhausted actions in this atk state, list empty
+                    del atks_dict[player_num].actions[atk_state]
+                    atk_state = atks_dict[player_num].determineState(from_start = 1)
+
+            # We could remove entry from attacked list here if there were a reason to do that
+
+        # *** debug code
+        #print("After")
+        #for player_num in self.atks_dict:
+        #    print(player_num)
+        #    for atk_type in self.atks_dict[player_num].actions:
+        #        print(atk_type)
+
+        return 1
     
     def determineVisits(self, action_obj):
         night_visits = {}
@@ -1368,6 +1346,12 @@ class defenseResObject(resObject):
     def getAction(self):
         defense_state = defense_state_map[self.state]
         return self.actions[defense_state][0]
+
+# *** This very plausibly belongs in global_def.py, but then so should the classes. Or maybe separate file for game class f'ns/classes.
+res_obj_map = {
+    "resolve_attacking" : atkResObject,
+    "resolve_defending" : defenseResObject
+}
 
 class actionObject:
     def __init__(self, action, player = None,  targets = None):
