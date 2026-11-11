@@ -23,236 +23,243 @@ roles_regex = jailor_regex + r"|" + RT_regex + r"|" + mafia_regex + r"|" + NK_re
 
 # define priorities for various action keywords
 # if an action keyword gets changed, it needs to be changed here and in the role(s) that utilizes it
+action_prio = 0
+def autoIncrementPrio():
+    global action_prio 
+    action_prio = action_prio + 1
+    return action_prio
+
 action_dict = {
-    "wiretapping" : {"priority" : 0,
+    "wiretapping" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 0,
                      "targeted" : 1
     },
-    "seancing" : {"priority" : 0,
+    "seancing" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 0,
                      "targeted" : 1
     },
-    "activating" : {"priority" : 0, # *** I think this is more specific
+    "activating" : {"priority" : autoIncrementPrio(), 
                      "is_visit" : 0
-    }, # this is listed alongside saves in the info doc, but it is treated as a transcendent/0 priority action
-    "igniting" : {"priority" : 0,
+    }, # this is listed alongside saves in the info doc, but it is treated as a transcendent action
+    "igniting" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 0,
                      "targeted" : 0
     },
-    "dooming" : {"priority" : 0,
+    "dooming" : {"priority" : autoIncrementPrio(),
                          "is_visit" : 0,
                          "max_targets" : 3,
                          "targeted" : 0 # *** ?
     },
-    "haunting" : {"priority" : 0,
+    "haunting" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 0,
                      "max_targets" : 1,
                      "targeted" : 0  # *** ?
     },
-    "reviving" : {"priority" : 0, # *** reviving can't be blocked, so it should be 0 priority
+    "reviving" : {"priority" : autoIncrementPrio(), # *** reviving can't be blocked, so it should be transcendent
                      "is_visit" : 0,
                      "max_targets" : 1,
                      "targeted" : 1
     },
     # ***Exe target switching
-    "jailing" : {"priority" : 1,
+    "jailing" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                      "max_targets" : 1,
                      "targeted" : 1
     },
-    "alerting" : {"priority" : 2,
+    "alerting" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 0,
                      "targeted" : 0
     },
-    "transporting" : {"priority" : 3,
+    "transporting" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                      "max_targets" : 2,
                      "targeted" : 1
     },
-    "resolve_transporting" : {"priority" : 3.5,
+    "resolve_transporting" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 0,
                      "targeted" : 0
     },
-    "trapping" : {"priority" : 4,
+    "trapping" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                      "max_targets" : 2,
                      "targeted" : 1
     },
-    "trapping_atk" : {"priority" : 4,
+    "trapping_atk" : {"priority" : autoIncrementPrio(),
                          "is_visit" : 0,
                          "targeted" : 0
         },
-    "hallowing" : {"priority" : 5,
+    "hallowing" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                      "max_targets" : 1,
                      "targeted" : 1
     },
-    "controlling" : {"priority" : 6,
+    "controlling" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                      "max_targets" : 1,
                      "targeted" : 1,
                      "hallow_cancels" : 1
     },
-    "blocking" : {"priority" : 7,
+    "blocking" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                      "max_targets" : 1,
                      "targeted" : 1
     },
-    "remembering" : {"priority" : 8,
+    "remembering" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 0,
                      "targeted" : 0
     },
-    "disguising" : {"priority" : 9,
+    "disguising" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                      "max_targets" : 2,
                      "targeted" : 1,
                      "hallow_cancels" : 1
     },
-    "resolve_disguising" : {"priority" : 9.5,
+    "resolve_disguising" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 0,
                      "targeted" : 0
     },
-    "protecting" : {"priority" : 10,
+    "protecting" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                      "max_targets" : 1,
                      "targeted" : 1
     },
-    "counterattacking" : {"priority" : 10, # used to create Bodyguard counterattack 
+    "counterattacking" : {"priority" : autoIncrementPrio(), # used to create Bodyguard counterattack 
                              "is_visit" : 0,
                              "targeted" : 0
             },
-    "sacrificing" : {"priority" : 10, # used to create the attack on Bodyguards 
+    "sacrificing" : {"priority" : autoIncrementPrio(), # used to create the attack on Bodyguards 
                          "is_visit" : 0,
                          "targeted" : 0
         },
-    "saving" : {"priority" : 11,
+    "saving" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                      "max_targets" : 1,
                      "targeted" : 1
     },
-    "self-saving" : {"priority" : 12,
+    "self-saving" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 0,
                      "targeted" : 0 
     },
-    "drinking potion" : {"priority" : 12,
+    "drinking potion" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 0,
                      "targeted" : 0
     },
-    "delivering to" : {"priority" : 13,
+    "delivering to" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                      "targeted" : 1
     },
-    "blessing" : {"priority" : 14,
+    "blessing" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 0,
                      "targeted" : 0
     },
-    "vesting" :{"priority" : 15,
+    "vesting" :{"priority" : autoIncrementPrio(),
                      "is_visit" : 0,
                      "targeted" : 0 
     },
-    "dousing" : {"priority" : 16,
+    "dousing" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                      "targeted" : 1
     },
-    "blackmailing" : {"priority" : 17,
+    "blackmailing" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                      "max_targets" : 1,
                      "targeted" : 1,
                      "hallow_cancels" : 1
     },
-    "investigating" : {"priority" : 18,
+    "investigating" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                      "max_targets" : 1,
                      "targeted" : 1
     },
-    "investigating_exact" : {"priority" : 18,
+    "investigating_exact" : {"priority" : action_prio, # *** same as above. Verify functionality
                          "is_visit" : 1,
                          "max_targets" : 1,
                          "targeted" : 1,
                          "hallow_cancels" : 1
     },
-    "checking" : {"priority" : 19,
+    "checking" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 0,
                      "max_targets" : 1,
                      "targeted" : 0
     },
-    "binding" : {"priority" : 20,
+    "binding" : {"priority" : autoIncrementPrio(),
                          "is_visit" : 1,
                          "max_targets" : 2,
                          "targeted" : 1,
                          "hallow_cancels" : 1
     },
-    "shooting" : {"priority" : 21,
+    "shooting" : {"priority" : autoIncrementPrio(),
                          "is_visit" : 1,
                          "max_targets" : 1,
                          "targeted" : 1
     },
-    "loading" : {"priority" : 21,
+    "loading" : {"priority" : autoIncrementPrio(),
                          "is_visit" : 0,
                          "targeted" : 0
     },
-    "killing" : {"priority" : 22,
+    "killing" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                      "max_targets" : 1,
                      "targeted" : 1
     }, 
     # leaving 22 for Mafioso killing, set in ***
-    "cleaning" : {"priority" : 23,
+    "cleaning" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                      "max_targets" : 1,
                      "targeted" : 1,
                      "hallow_cancels" : 1
     },
-    "stabbing" : {"priority" : 24,
+    "stabbing" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                      "max_targets" : 1,
                      "targeted" : 1
     },
-    "mauling" : {"priority" : 25,
+    "mauling" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                      "max_targets" : 1,
                      "targeted" : 1
     },
-    "mauling_visitor" : {"priority" : 26,
+    "mauling_visitor" : {"priority" : autoIncrementPrio(),
                          "is_visit" : 0,
                          "targeted" : 0
     },
-    "resolve_attacking" : {"priority" : 27, # *** just do auto priority already lol
+    "resolve_attacking" : {"priority" : autoIncrementPrio(), 
                      "is_visit" : 0,
                      "targeted" : 0
     },
-    "executing" : {"priority" : 27.5,
+    "executing" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 0,
                      "targeted" : 0
     },
-    "hexing" : {"priority" : 28,
+    "hexing" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 0, # ***
                      "max_targets" : 1,
                      "targeted" : 1
     },
-    "tracking" : {"priority" : 29,
+    "resolve_binding" : {"priority" : autoIncrementPrio(), # *** just do auto priority already lol
+                     "is_visit" : 1,
+                     "max_targets" : 2,
+                     "targeted" : 1
+    },
+    "tracking" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                      "max_targets" : 1,
                      "targeted" : 1
     },
-    "watching" : {"priority" : 30,
+    "watching" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                      "max_targets" : 1,
                      "targeted" : 1
     },
-    "stalking" : {"priority" : 31,
+    "stalking" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 1,
                       "max_targets" : 1,
                      "targeted" : 1,
                      "hallow_cancels" : 1
     },
-    "resolve_observing" : {"priority" : 31.5,
+    "resolve_observing" : {"priority" : autoIncrementPrio(),
                          "is_visit" : 0,
                          "targeted" : 0
-    },
-    "determineVisits" : {"priority" : [],
-                     "is_visit" : 0,
-                     "targeted" : 0
     }
 }
 
