@@ -393,10 +393,6 @@ class game:
 
         return 0
 
-    def resolveBinds(self, action_obj):
-
-        return 1
-
     def resolveObserve(self, obs_action):
         night_visits = {}
         determined_night_visits = {} # I believe this could be made more memory efficient by not using 
@@ -635,6 +631,7 @@ class game:
         setattr(action_obj.player, action_obj.action, 1)
         return 1
 
+    # Game Class Helper Functions for Role Actions
     def resolveWiretap(self, action_obj):
         for target_num in action_obj.targets:
             self.players[target_num].notifications.append("You were wiretapped!")
@@ -860,6 +857,8 @@ class game:
                     for maul in atks_dict[player_num].actions["mauling"]:
                         if visitor != maul.player:
                             self.queueResolution(actionObject("mauling_visitor", maul.player, [visitor]))
+                            #atks_dict.setdefault(visitor.player_num, atkResObject(visitor.player_num))
+                            #atks_dict[visitor.player_num].addAction(actionObject("mauling_visitor", maul.player, [visitor]))
                             # *** "You attacked someone!"" should go here?
         # *** I think the inner loops can be written as a function for both bg and the general case, and will add stuff for bg?
         attacked_players_list = [player_num for player_num in atks_dict] 
@@ -1048,8 +1047,40 @@ class game:
     
     def getTargetPlayerAbs(self, target_ind): # I might never use this, probably just easier to do it directly.
         return self.players[target_ind] 
+
+    def resolveBinds(self, action_obj):
+        eval_obj = evalObject(self.resolution_dict[action_obj.action]["binding"], len(self.players)) # *** if I'm not lazy I probably change this to a dict at some point
+        node_list = self.buildNodeList(eval_obj)
+
+        for node_set in node_list:
+            living_players = set()
+            death_in_set = 0
+
+            LB_noti_map = {
+                0 : "Neither of your targets are members of the Town!",
+                1 : "One of your targets is a member of the Town!",
+                2: "Both of your targets are members of the Town!"
+            }
+
+            for action in node_set["actions"]:
+                target_alignment = ((action.targets[0].faction == faction_dict["Town"])
+                                    + (action.targets[1].faction == faction_dict["Town"]))
+
+                noti = LB_noti_map[target_alignment] if target_alignment in LB_noti_map else sys.exit("LB Alignment Error")
+                action.player.notifications.append(noti)
+            # note living players in set. If dead player found, set death_in_set to 1
+            for player_num in node_set["targets"]:
+                if self.players[player_num].perpetuated["living_status"]:
+                    living_players.add(player_num)
+                else:
+                    death_in_set = 1
+
+            # kill the living players in the set if death_in_set is 1
+            if death_in_set == 1:
+                for player_num in living_players:
+                    self.killPlayer(player_num, action_obj)
+        return 1
     
-    # Helper Functions for Role Actions
     def resolveTransports(self, resolve_obj):
         # *** Add back (needs fixed) if Jailor added back
         #if action_obj.targets[0].jailed == 1:
