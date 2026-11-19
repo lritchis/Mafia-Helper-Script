@@ -223,39 +223,38 @@ action_dict = {
                          "is_visit" : 0,
                          "targeted" : 0
     },
-    "resolve_attacking" : {"priority" : autoIncrementPrio(), 
-                     "is_visit" : 0,
-                     "targeted" : 0
-    },
     "executing" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 0,
                      "targeted" : 0
     },
-    "hexing" : {"priority" : autoIncrementPrio(),
-                     "is_visit" : 0, # ***
-                     "max_targets" : 1,
-                     "targeted" : 1
-    },
-    "resolve_binding" : {"priority" : autoIncrementPrio(), # *** just do auto priority already lol
-                     "is_visit" : 1,
-                     "max_targets" : 2,
-                     "targeted" : 1
-    },
     "tracking" : {"priority" : autoIncrementPrio(),
-                     "is_visit" : 1,
-                     "max_targets" : 1,
-                     "targeted" : 1
+                         "is_visit" : 1,
+                         "max_targets" : 1,
+                         "targeted" : 1
     },
     "watching" : {"priority" : autoIncrementPrio(),
-                     "is_visit" : 1,
-                     "max_targets" : 1,
-                     "targeted" : 1
+                        "is_visit" : 1,
+                        "max_targets" : 1,
+                        "targeted" : 1
     },
     "stalking" : {"priority" : autoIncrementPrio(),
-                     "is_visit" : 1,
-                      "max_targets" : 1,
-                     "targeted" : 1,
-                     "hallow_cancels" : 1
+                        "is_visit" : 1,
+                        "max_targets" : 1,
+                        "targeted" : 1,
+                        "hallow_cancels" : 1
+    },
+    "resolve_attacking" : {"priority" : autoIncrementPrio(), 
+                                "is_visit" : 0,
+                                "targeted" : 0
+            },
+    "hexing" : {"priority" : autoIncrementPrio(),
+                            "is_visit" : 0, # ***
+                            "max_targets" : 1,
+                            "targeted" : 1
+        },
+    "resolve_binding" : {"priority" : autoIncrementPrio(), # *** just do auto priority already lol
+                     "is_visit" : 0,
+                     "targeted" : 0
     },
     "resolve_observing" : {"priority" : autoIncrementPrio(),
                          "is_visit" : 0,
@@ -282,7 +281,7 @@ death_message_dict = {
     "mauling" : "mauled by the Werewolf",
     "mauling_visitor" : "mauled by the Werewolf",
     "igniting" : "ignited by an Arsonist",
-    "binding" : "life-bound to someone that died",
+    "resolve_binding" : "life-bound to someone that died",
     "hexing" : "hexed by a Necromancer",
     "executing" : "executed by the Jailor"
 }
