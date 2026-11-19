@@ -856,9 +856,8 @@ class game:
                 for visitor in self.players[player_num].visitors:
                     for maul in atks_dict[player_num].actions["mauling"]:
                         if visitor != maul.player:
-                            self.queueResolution(actionObject("mauling_visitor", maul.player, [visitor]))
-                            #atks_dict.setdefault(visitor.player_num, atkResObject(visitor.player_num))
-                            #atks_dict[visitor.player_num].addAction(actionObject("mauling_visitor", maul.player, [visitor]))
+                            atks_dict.setdefault(visitor.player_num, atkResObject(visitor.player_num))
+                            atks_dict[visitor.player_num].addAction(actionObject("mauling_visitor", maul.player, [visitor]))
                             # *** "You attacked someone!"" should go here?
         # *** I think the inner loops can be written as a function for both bg and the general case, and will add stuff for bg?
         attacked_players_list = [player_num for player_num in atks_dict] 
