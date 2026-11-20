@@ -81,6 +81,7 @@ class game:
             "Shapeshifter" : craigClass,
             "Werewolf" : werewolfClass,
             "Necromancer" : necroClass,
+            "Amnesiac" : amneClass,
             "Doomsayer" : doomClass
         }
 
@@ -266,6 +267,7 @@ class game:
             "protecting" : self.queueResolution,
             "saving" : self.queueResolution,
             "self-saving" : self.queueResolution,
+            "blessing" : self.queueBless,
             "vesting" : self.setActionAttribute,
             "resolve_attacking" : self.resolveAttacks,
             "resolve_binding" : self.resolveBinds,
@@ -781,6 +783,19 @@ class game:
 
     def resolveDeliver(self, action_obj):
         print("***Still needs implemented, dingus!")
+        return 1
+
+    def queueBless(self, action_obj):
+        blessed_role = action_obj.targets[0]
+        action_obj.targets = []
+
+        for player in self.players: # *** might be ways to optimize this, putting off for now
+            if player.role_name == blessed_role:
+                action_obj.targets.append(player)
+
+        if action_obj.targets:
+            self.queueResolution(action_obj)
+
         return 1
     
     def determineAvailableWiretaps(self, GF_ind):
