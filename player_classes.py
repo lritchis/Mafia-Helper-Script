@@ -12,7 +12,7 @@ __all__ = ["player",
            "janitorClass", "mafiosoClass", "craigClass",
            "werewolfClass",
            "necroClass", 
-           "doomClass"]
+           "amneClass", "doomClass"]
 
 class player:  
     def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None): 
@@ -336,8 +336,6 @@ class alchClass (player): # *** class not tested
 class bodyguardClass (player): 
     def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
         super().__init__(player_name, player_num, role_name, night_num, perpetuated_element)
-        self.addAction("protecting")
-
         if(self.perpetuated["vest"]):
             self.addAction("vesting")
 
@@ -585,6 +583,17 @@ class necroClass (player):
         
         if is_vote:
             self.addAction(player.role_name)
+
+class amneClass (player):
+    def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
+        super().__init__(player_name, player_num, role_name, night_num, perpetuated_element)
+
+    def getDeathInfo(self, player, is_vote = 0):
+        if player.faction > faction_dict["Town"]:
+            self.notifications.append(player.player_name + " was a member of the Town!")
+        else:
+            self.notifications.append(player.player_name + " was not a member of the Town!")
+            # *** stuff here for remember updates
 
 class doomClass (player):
     def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
