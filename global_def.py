@@ -150,6 +150,7 @@ action_dict = {
     },
     "blessing" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 0,
+                     "max_targets" : 1,
                      "targeted" : 0
     },
     "vesting" :{"priority" : autoIncrementPrio(),
