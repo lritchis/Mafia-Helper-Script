@@ -127,6 +127,7 @@ class game:
                 elif((role_name == 'Medium')):
                     self.living_medium = 1
 
+            # *** What was this meant to be used for?
             if (role_class_dict[role_name]["faction"] == "Town"):
                 self.num_town += 1
 
@@ -900,16 +901,18 @@ class game:
                     if getattr(attacked_player, "vesting", 0) and (atk_flags[attack_obj.action] & 0b010):
                         attacked_player.notifications.append("Someone tried to attack you but you were protected by your vest!")
                         self.players[attack_obj.player.player_num].notifications.append("Your attack failed!")
+
                     elif attacked_player.night_immune and (atk_flags[attack_obj.action] & 0b010):
                         attacked_player.notifications.append("Someone tried to attack you but you were protected by you are immune!")
                         self.players[attack_obj.player.player_num].notifications.append("Your attack failed!")
+
                     elif (attacked_player.perpetuated.get("shield", 0) and not 
                         (role_class_dict[attacked_player.role_name]["faction"] == faction_dict["NE"] and (atk_flags[attack_obj.action] & 0b1))):
                         attacked_player.notifications.append("Someone tried to attack you but they broke your shield instead!")
                         attacked_player.perpetuated["shield"] = 0
-                        if attack_obj.action != "mauling": # mauling should be the only attack that gets to here and doesn't get "Your attack failed!" but needs testing
+                        if not(re.match("mauling", attack_obj.action) and (atk_flags[attack_obj.action] & 0b100)): # mauling and indirect attacks don't get an attack failure notification. Except SK if I make blocked stab indirect?***
                             self.players[attack_obj.player.player_num].notifications.append("Your attack failed!") 
-                    
+
                     else:
                         # *** TO-DO: Technically need to make this optional
                         if attack_obj.action == "stabbing":
