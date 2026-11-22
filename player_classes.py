@@ -7,7 +7,7 @@ from global_def import startsWVowel
 
 # define what is imported from file
 __all__ = ["player", 
-           "alchClass", "bodyguardClass", "docClass",
+           "alchClass", "bodyguardClass", "clericClass", "docClass",
            "vigiClass", "medicClass", "veteranClass", 
            "janitorClass", "mafiosoClass", "craigClass",
            "werewolfClass",
@@ -192,7 +192,7 @@ class player:
         dict_value_regex = r"\A.+\s{0,1}:\s(.+),{0,1}"
         set_regex = r"\A\{.+\}(,\s){0,1}"
         int_regex = r"(\A-{0,1}[0-9]+)(,\s){0,1}"
-        string_regex = r"\A\'([A-Za-z0-9]+(\s){0,1})+\'(,\s){0,1}" 
+        string_regex = r"\A([A-Za-z0-9]+(\s){0,1})+(,\s){0,1}" 
 
         if text_type is int:
             return int (text)
@@ -347,6 +347,25 @@ class bodyguardClass (player):
                 self.perpetuated["vest"] = 0
             case _:
                 pass
+        return 1
+
+class clericClass (player): 
+    def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
+        super().__init__(player_name, player_num, role_name, night_num, perpetuated_element)
+        if perpetuated_element:
+            self.last_bless = self.perpetuated["last_bless"]
+            self.perpetuated["last_bless"] = "N"
+        
+    def act(self, action_obj):
+        if self.last_bless != action_obj.targets[0]:
+            if action_obj.targets[0] == "Cleric":
+                if self.perpetuated["self-bless"]:
+                    self.perpetuated["self-bless"] = 0
+                else:
+                    sys.exit("Error, " + self.player_name + " attempting to bless Cleric a 2nd time.")
+            self.perpetuated["last_bless"] = action_obj.targets[0]
+        else:
+            sys.exit("Error, " + self.player_name + " attempting to bless same role on consecutive nights.")
         return 1
 
 class docClass (player):
@@ -590,9 +609,9 @@ class amneClass (player):
 
     def getDeathInfo(self, player, is_vote = 0):
         if player.faction > faction_dict["Town"]:
-            self.notifications.append(player.player_name + " was a member of the Town!")
-        else:
             self.notifications.append(player.player_name + " was not a member of the Town!")
+        else:
+            self.notifications.append(player.player_name + " was a member of the Town!")
             # *** stuff here for remember updates
 
 class doomClass (player):
