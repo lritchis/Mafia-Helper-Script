@@ -339,7 +339,7 @@ investigator_categories = [
     ["Lookout", "Tracker", "Medic", "Stalker", "Werewolf", "Doomsayer"],
     ["Investigator", "Veteran", "Vigilante", "Consigliere", "Mafioso", "Necromancer"],
     ["Transporter", "Alchemist", "Trapper", "Courier", "Disguiser", "Lifebinder"],
-    ["Escort", "Retributionist", "Cleric", "Blackmailer", "Consort", "Witch"]
+    ["Escort", "Retributionist", "Cleric", "Blackmailer", "Consort", "Ritualist", "Witch"]
 ]
 
 investigator_categories_dict = {}
@@ -393,7 +393,8 @@ role_class_dict = {
     },
 
     "Cleric" : {"actions" : ["blessing"],
-                "faction" : "Town"
+                "faction" : "Town",
+                "perpetuated" : {"self-bless" : 1, "last_bless" : "N"}
     },
 
     "Doctor" : {"actions" : ["saving"],
