@@ -192,7 +192,7 @@ class player:
         dict_value_regex = r"\A.+\s{0,1}:\s(.+),{0,1}"
         set_regex = r"\A\{.+\}(,\s){0,1}"
         int_regex = r"(\A-{0,1}[0-9]+)(,\s){0,1}"
-        string_regex = r"\A([A-Za-z0-9]+(\s){0,1})+(,\s){0,1}" 
+        string_regex = r"\A\'{0,1}([A-Za-z0-9]+(\s){0,1})+(,\s){0,1}\'{0,1}"
 
         if text_type is int:
             return int (text)
