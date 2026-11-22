@@ -72,6 +72,7 @@ class game:
         player_class_map = {
             "Alchemist" : alchClass,             
             "Bodyguard" : bodyguardClass,
+            "Cleric" : clericClass,
             "Doctor" : docClass,
             "Vigilante" : vigiClass,
             "Medic" : medicClass,
