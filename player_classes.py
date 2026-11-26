@@ -487,17 +487,7 @@ class mafiaGeneralClass:
             self.max_targets.append(len(self.members_dict))
             self.max_actions += 1
 
-    # *** in self.act, verify armed Mafia isn't acting without killing. Verify that arming is happening.
     def act(self, action_obj):
-        match action_obj.action:
-            case "arming":
-                for queued_action in self.actions: # *** I probably wanna make all class action lists into dicts eventually
-                    if queued_action.action == "killing":
-                        for member in self.members_dict: # *** this can be much simpler with players_dict but don't feel like doing that overhaul rn
-                            if member != "Mafia":
-                                if self.members_dict[member].player_num == action_obj.targets[0]:
-                                    queued_action.player = self.members_dict[member]
-                                    break
         return 1
 
 class janitorClass (player):
