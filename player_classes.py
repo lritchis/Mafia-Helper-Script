@@ -9,7 +9,7 @@ from global_def import startsWVowel
 __all__ = ["player", 
            "alchClass", "bodyguardClass", "clericClass", "docClass",
            "vigiClass", "medicClass", "veteranClass", 
-           "janitorClass", "mafiosoClass", "craigClass",
+           "mafiaGeneralClass", "janitorClass", "mafiosoClass", "craigClass",
            "werewolfClass",
            "necroClass", 
            "amneClass", "doomClass"]
@@ -471,7 +471,35 @@ class vigiClass (player):
                     return 0
     
             return 1 
-    
+
+class mafiaGeneralClass:
+    def __init__(self, living_mafia_dict, night_num, wiretaps_available):
+        self.members_dict = living_mafia_dict
+
+        self.actions = []
+        
+        self.action_keywords = ["arming", "killing"]
+        self.max_targets = [1, 1]
+        self.max_actions = 2
+
+        if wiretaps_available:
+            self.action_keywords.append("wiretapping")
+            self.max_targets.append(len(self.members_dict))
+            self.max_actions += 1
+
+    # *** in self.act, verify armed Mafia isn't acting without killing. Verify that arming is happening.
+    def act(self, action_obj):
+        match action_obj.action:
+            case arming:
+                for queued_action in self.actions: # *** I probably wanna make all class action lists into dicts eventually
+                    if queued_action.action == "killing":
+                        for member in self.members_dict: # *** this can be much simpler with players_dict but don't feel like doing that overhaul rn
+                            if member != "Mafia":
+                                if self.members_dict[member].player_num == action_obj.targets[0]:
+                                    queued_action.player = self.members_dict[member]
+                                    break
+        return 1
+
 class janitorClass (player):
     def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
         super().__init__(player_name, player_num, role_name, night_num, perpetuated_element)
@@ -613,6 +641,7 @@ class amneClass (player):
         else:
             self.notifications.append(player.player_name + " was a member of the Town!")
             # *** stuff here for remember updates
+            # *** including shield update
 
 class doomClass (player):
     def __init__(self, player_name, player_num, role_name, night_num = 0, perpetuated_element = None):
