@@ -94,6 +94,10 @@ class game:
         self.players = []
         self.notify_for_deaths = set() # set to hold Amnesiacs and Necromancers that learn information for every death
         # will add 1 for every Townie found. Compared to a logical condition for finding the last Townie this is easier and should be just as efficient
+        self.players_dict = {}
+        self.players_regex = "Mafia"
+        self.mafia_dict = {}
+        
         self.num_town = 0 
         self.living_medium = 0
 
@@ -101,6 +105,7 @@ class game:
         GF_ind = -99
 
         self.night_num = int(gameRoot.find('Night').text) + 1
+        # *** Add parsing for dead players that can act (Medium seance, Jester haunt)
 
         for player_num, category in enumerate(gameRoot[1:]):
             slot_name = category.tag
@@ -114,11 +119,20 @@ class game:
             player_name = category.find('Player').text
             perpetuated_element = category.find('Perpetuated')
 
-            #if(vote_target == player_name): # vote input will kill whomever was voted that day ***haven't tested btw
-                #perpetuated_element.find("living_status").text = "0"
-                # *** Godfather promotion needs to be able to occur here
+            # *** What was this meant to be used for?
+            if (role_class_dict[role_name]["faction"] == "Town"):
+                self.num_town += 1
 
-            if(perpetuated_element.find("living_status").text == "1"):
+            player_obj = player_class_map.get(role_name, player)(player_name, player_num, role_name, self.night_num, perpetuated_element)
+
+            self.players_dict[player_obj.player_name] = player_obj
+
+            if(player_obj.perpetuated["living_status"] == 1):
+                self.players_regex = self.players_regex + r"|" + player_obj.player_name
+
+                if player_obj.faction == faction_dict["Mafia"]:
+                    self.mafia_dict[player_obj.player_name] = player_obj
+
                 num_living = num_living + 1  
                 if((role_name == 'Godfather')):
                     GF_ind = player_num # note which player is a living Godfather
@@ -127,11 +141,6 @@ class game:
                 elif((role_name == 'Medium')):
                     self.living_medium = 1
 
-            # *** What was this meant to be used for?
-            if (role_class_dict[role_name]["faction"] == "Town"):
-                self.num_town += 1
-
-            player_obj = player_class_map.get(role_name, player)(player_name, player_num, role_name, self.night_num, perpetuated_element)
             if (role_name == "Necromancer") or (role_name == "Amnesiac"):
                 self.notify_for_deaths.add(player_obj)
 
@@ -143,6 +152,8 @@ class game:
                 notified_player.getDeathInfo(self.players[vote_target], is_vote=1) # *** kinda brute force, hopefully change when making day phase script
             self.players[vote_target].perpetuated["living_status"] = 0
 
+        if self.mafia_dict:
+            self.mafia_dict["Mafia"] = mafiaGeneralClass(self.mafia_dict, self.night_num, num_living > int(len(self.players) / 2))
         if(num_living > int(len(self.players) / 2)):
             if(GF_ind > 0):
                 self.determineAvailableWiretaps(GF_ind)
@@ -155,27 +166,24 @@ class game:
         # *** Might remove
         file.readline() # the first line of the action file should be the night number
         # should I verify this? Yes. Will I? No
-
         while (True):
             current_line = file.readline() # read next line
             if not current_line: # break loop when file ends
                 file.close()
                 break
-            # *** anywhere I use re.match, I think I need to be using re.search
-            if re.match(r"\A\d+\.", current_line): # Action lines should start with a number, i.e. "7. "
-                # identify the player number from the action line and store as a number
-                player_num = int(re.search(r"\A\d+", current_line).group()) - 1
-
-                # remove the "#. " from the action text
-                action_text = re.sub(r"\A\d+\.\s+","", current_line)
-
-                if re.match(r"(?i)\A" + self.players[player_num].player_name, action_text):
-                    action_text = re.sub(r"(?i)\A" + self.players[player_num].player_name,"", action_text)
-                    self.queueActions(self.players[player_num], action_text)
+            player_name = re.search(self.players_regex,current_line)
+            if player_name:
+                player_name = player_name.group()
+                if re.match(r"\A(\d+\.\s+){0,1}" + player_name, current_line):
+                    action_text = re.sub(r"\A(\d+\.\s+){0,1}" + player_name, "", current_line)
+                    if player_name in self.players_dict: # *** can be cleaned up I think
+                        player_num = self.players_dict[player_name].player_num
+                        self.queueActions(self.players[player_num], action_text)
+                    elif player_name == "Mafia":
+                        self.queueActions(self.mafia_dict["Mafia"], action_text)
                 else:
-                    sys.exit("Error parsing action file, line " + current_line + " does not begin with indicated player " + str(player_num+1) + ". " + self.players[player_num].player_name)
-            else:
-                print("Warning, cannot evaluate action due to incorrect format. Ignoring line: " + current_line)
+                    print("Warning, cannot evaluate action due to incorrect format. Ignoring line: " + current_line)
+            #print(player_name)
 
     def queueActions(self, player, action_text): # this function parses action_text for actions that are possible given the input player,
     # creates an actionObject for each, and then adds that actionObject to game.action_queue
@@ -358,7 +366,7 @@ class game:
                 self.queueResolution(actionObject("alerting", target, [action_obj.player]))
                 action_obj.cancelled = 1
                 return 1
-                      
+             
         if (action_obj.player.faction >= faction_dict["non-Town"]):
             for target in action_obj.targets:
                 if (target.trappers_targeting):
@@ -830,11 +838,12 @@ class game:
                 atks_dict.setdefault(target_num, atkResObject(target_num))
                 atks_dict[target_num].addAction(action_obj)
 
-        for action_type in self.resolution_dict["resolve_defending"]:
-            for action_obj in self.resolution_dict["resolve_defending"][action_type]:
-                target_num = action_obj.targets[0].player_num
-                defenses_dict.setdefault(target_num, defenseResObject(target_num))
-                defenses_dict[target_num].addAction(action_obj)
+        if "resolve_defending" in self.resolution_dict:
+            for action_type in self.resolution_dict["resolve_defending"]:
+                for action_obj in self.resolution_dict["resolve_defending"][action_type]:
+                    target_num = action_obj.targets[0].player_num
+                    defenses_dict.setdefault(target_num, defenseResObject(target_num))
+                    defenses_dict[target_num].addAction(action_obj)
 
         attacked_players_list = [player_num for player_num in atks_dict]
         for player_num in attacked_players_list:
