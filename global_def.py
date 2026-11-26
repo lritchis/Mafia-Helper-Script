@@ -30,7 +30,7 @@ def autoIncrementPrio():
     return action_prio
 
 action_dict = {
-    "wiretapping" : {"priority" : autoIncrementPrio(),
+    "arming" : {"priority" : autoIncrementPrio(),
                      "is_visit" : 0,
                      "targeted" : 1
     },
@@ -260,7 +260,11 @@ action_dict = {
     "resolve_observing" : {"priority" : autoIncrementPrio(),
                          "is_visit" : 0,
                          "targeted" : 0
-    }
+    },
+    "wiretapping" : {"priority" : autoIncrementPrio(),
+                         "is_visit" : 0,
+                         "targeted" : 1
+    },
 }
 
 # *** Eventually implement for automatic priority indexing
