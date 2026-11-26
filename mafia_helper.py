@@ -250,6 +250,7 @@ class game:
 
     def evaluateActions(self): 
         action_eval_map = {
+            "arming" : self.resolveArm,
             "wiretapping" : self.resolveWiretap,
             "igniting" : self.resolveIgnite,
             "reviving" : self.resolveRevive,
@@ -300,8 +301,10 @@ class game:
         
         # *** This is a temp fix and resolution stuff needs to be cleaned up
         self.resolution_dict = {}
-        self.observing = None
-        blackmailing = 0 # *** fix to match?
+
+        if self.mafia_dict:
+            if not ((self.mafia_dict["Mafia"].actions) and self.mafia_dict["Mafia"].actions[0].action == "arming"): # *** change this to dict blah blah
+                sys.exit("Error, Mafia must arm a member.")
 
         self.action_queue.sort(key = lambda x: x.priority) # sort action queue by priority
         self.player_locations = [player.player_num for player in self.players] # list that holds player_num and is shifted by Transporters
@@ -644,6 +647,26 @@ class game:
         return 1
 
     # Game Class Helper Functions for Role Actions
+    def resolveArm(self, action_obj):
+        killing = 0 # *** this will be unecessary later when I'm not being lazy and make actions a dict
+        mafia_obj = action_obj.player
+        
+        for member in mafia_obj.members_dict: # *** this can be much simpler with players_dict but don't feel like doing that overhaul rn
+            if member != "Mafia":
+                if mafia_obj.members_dict[member].player_num == action_obj.targets[0]:
+                    armed_mafia = mafia_obj.members_dict[member]
+
+        for queued_action in mafia_obj.actions: # *** I probably wanna make all class action lists into dicts eventually
+            if queued_action.action == "killing":
+                killing = 1
+                queued_action.player = armed_mafia
+                break              
+                            
+        if killing == 0 and armed_mafia.actions:
+            sys.exit("Error: Armed Mafia cannot act if they do not kill. (Armed Mafia: " + armed_mafia.player_name + ")")
+
+        return 1
+    
     def resolveWiretap(self, action_obj):
         for target_num in action_obj.targets:
             self.players[target_num].notifications.append("You were wiretapped!")
