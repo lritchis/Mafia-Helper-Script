@@ -490,7 +490,7 @@ class mafiaGeneralClass:
     # *** in self.act, verify armed Mafia isn't acting without killing. Verify that arming is happening.
     def act(self, action_obj):
         match action_obj.action:
-            case arming:
+            case "arming":
                 for queued_action in self.actions: # *** I probably wanna make all class action lists into dicts eventually
                     if queued_action.action == "killing":
                         for member in self.members_dict: # *** this can be much simpler with players_dict but don't feel like doing that overhaul rn
